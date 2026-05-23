@@ -6,30 +6,34 @@
   <title>テスト</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/recharts@2.5.0/umd/Recharts.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState } = React;
-    const { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } = Recharts;
+    const { useState, useEffect, useRef } = React;
     function App() {
-      const data = [
-        { axis: "耳", value: 80 },
-        { axis: "目", value: 60 },
-        { axis: "鼻", value: 40 },
-      ];
+      const canvasRef = useRef(null);
+      useEffect(() => {
+        const ctx = canvasRef.current.getContext('2d');
+        new Chart(ctx, {
+          type: 'radar',
+          data: {
+            labels: ['輪郭', '耳', '目', '鼻', 'ヒゲ'],
+            datasets: [{
+              label: 'テスト',
+              data: [80, 60, 40, 70, 50],
+              borderColor: '#e8734a',
+              backgroundColor: 'rgba(232,115,74,0.2)',
+            }]
+          }
+        });
+      }, []);
       return (
         <div>
           <h1>レーダーテスト</h1>
-          <ResponsiveContainer width="100%" height={300}>
-            <RadarChart data={data}>
-              <PolarGrid />
-              <PolarAngleAxis dataKey="axis" />
-              <Radar dataKey="value" stroke="#e8734a" fill="#e8734a" fillOpacity={0.3} />
-            </RadarChart>
-          </ResponsiveContainer>
+          <canvas ref={canvasRef}></canvas>
         </div>
       );
     }
