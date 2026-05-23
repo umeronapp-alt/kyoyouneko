@@ -1,6 +1,323 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>どこまでが猫ですか？</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
 <body>
-<h1>テスト</h1>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    const { RadarChart, PolarGrid, PolarAngleAxis, Radar, Legend, ResponsiveContainer } = Recharts;
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCO5gK_OTHnjCZ2JAG__AsH2ZlqcXKXIMI",
+      authDomain: "kyoyouneko-b42f5.firebaseapp.com",
+      projectId: "kyoyouneko-b42f5",
+      storageBucket: "kyoyouneko-b42f5.firebasestorage.app",
+      messagingSenderId: "674428072939",
+      appId: "1:674428072939:web:44a77bc5a4d5eef9b19fae",
+    };
+
+    let firestoreDb = null;
+    let firebaseImported = false;
+
+    async function getDb() {
+      if (firestoreDb) return firestoreDb;
+      const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+      const { getFirestore } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+      firestoreDb = getFirestore(app);
+      return firestoreDb;
+    }
+
+    async function loadVotesFromFirestore() {
+      try {
+        const { collection, getDocs, query } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const db = await getDb();
+        const snap = await getDocs(query(collection(db, "votes")));
+        return snap.docs.map(d => d.data());
+      } catch (e) { console.error(e); return []; }
+    }
+
+    async function saveVoteToFirestore(entry) {
+      try {
+        const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const db = await getDb();
+        await addDoc(collection(db, "votes"), entry);
+      } catch (e) { console.error(e); }
+    }
+
+    const PARAMS = {
+      outline_ratio:  { axis: "輪郭", label: "縦横比" },
+      ear_size:       { axis: "耳",   label: "耳の大きさ" },
+      ear_pointy:     { axis: "耳",   label: "耳の尖り" },
+      ear_position:   { axis: "耳",   label: "耳の位置" },
+      eye_ratio:      { axis: "目",   label: "目の縦横比" },
+      eye_angle:      { axis: "目",   label: "目の角度" },
+      nose_size:      { axis: "鼻",   label: "鼻の大きさ" },
+      nose_angle:     { axis: "鼻",   label: "鼻の角度" },
+      whisker_count:  { axis: "ヒゲ", label: "ヒゲの本数" },
+      whisker_pos:    { axis: "ヒゲ", label: "ヒゲの位置" },
+      mouth_size:     { axis: "輪郭", label: "口の大きさ" },
+    };
+    const PARAM_KEYS = Object.keys(PARAMS);
+    const AXES = ["輪郭", "耳", "目", "鼻", "ヒゲ"];
+    const YES_LIMIT = 5;
+
+    function randomParams() {
+      const p = {};
+      PARAM_KEYS.forEach(k => { p[k] = Math.floor(Math.random() * 21); });
+      return p;
+    }
+    function normalize(params) {
+      const n = {};
+      PARAM_KEYS.forEach(k => { n[k] = params[k] / 20; });
+      return n;
+    }
+    function paramsKey(params) { return PARAM_KEYS.map(k => params[k]).join("-"); }
+    function calcAxisScores(normParams) {
+      const sums = {}, counts = {};
+      AXES.forEach(a => { sums[a] = 0; counts[a] = 0; });
+      PARAM_KEYS.forEach(k => { const ax = PARAMS[k].axis; sums[ax] += normParams[k]; counts[ax]++; });
+      const result = {};
+      AXES.forEach(a => { result[a] = Math.round((sums[a] / counts[a]) * 100); });
+      return result;
+    }
+    function calcAvgNormParams(yesVotes) {
+      if (!yesVotes.length) return null;
+      const sum = {};
+      PARAM_KEYS.forEach(k => { sum[k] = 0; });
+      yesVotes.forEach(v => { PARAM_KEYS.forEach(k => { sum[k] += v.params[k]; }); });
+      const avg = {};
+      PARAM_KEYS.forEach(k => { avg[k] = sum[k] / yesVotes.length / 20; });
+      return avg;
+    }
+    function calcFarthestNorm(avgNorm) {
+      if (!avgNorm) return null;
+      const far = {};
+      PARAM_KEYS.forEach(k => { far[k] = avgNorm[k] >= 0.5 ? 0 : 1; });
+      return far;
+    }
+
+    function CatFace({ norm, size = 200 }) {
+      const W = size, H = size, cx = size / 2, cy = size * 0.55;
+      const scale = size / 200;
+      const rx = (40 + (1 - norm.outline_ratio) * 20) * scale;
+      const ry = (38 + norm.outline_ratio * 22) * scale;
+      const earSize = (16 + norm.ear_size * 22) * scale;
+      const earPointy = norm.ear_pointy;
+      const earAngleDeg = 90 - norm.ear_position * 52;
+      const earAngleRad = (earAngleDeg * Math.PI) / 180;
+      function earCenter(sign) {
+        const ang = sign === 1 ? earAngleRad : Math.PI - earAngleRad;
+        return { x: cx + rx * Math.cos(ang), y: cy - ry * Math.sin(ang) };
+      }
+      function earOutDir(sign) {
+        const ang = sign === 1 ? earAngleRad : Math.PI - earAngleRad;
+        return { dx: Math.cos(ang), dy: -Math.sin(ang) };
+      }
+      function earPath(sign) {
+        const ec = earCenter(sign), dir = earOutDir(sign);
+        const perp = { dx: -dir.dy * sign, dy: dir.dx * sign };
+        const half = earSize * 0.5, tipDist = earSize * (0.7 + earPointy * 0.7);
+        const bx1 = ec.x + perp.dx * half, by1 = ec.y + perp.dy * half;
+        const bx2 = ec.x - perp.dx * half, by2 = ec.y - perp.dy * half;
+        const tipX = ec.x + dir.dx * tipDist, tipY = ec.y + dir.dy * tipDist;
+        if (earPointy < 0.05) return `M ${bx1} ${by1} A ${half} ${half} 0 0 ${sign === 1 ? 0 : 1} ${bx2} ${by2} Z`;
+        if (earPointy < 0.5) return `M ${bx1} ${by1} Q ${tipX} ${tipY} ${bx2} ${by2} Z`;
+        return `M ${bx1} ${by1} L ${tipX} ${tipY} L ${bx2} ${by2} Z`;
+      }
+      const eyeDot = 1.5 * scale, eyeLineLen = 7 * scale;
+      const eyeY = cy - ry * 0.22, eyeX = rx * 0.44;
+      const eyeHalf = norm.eye_ratio < 0.5
+        ? { dx: 0, dy: eyeLineLen * (1 - norm.eye_ratio * 2) }
+        : { dx: eyeLineLen * (norm.eye_ratio - 0.5) * 2, dy: 0 };
+      const eyeStrokeW = Math.max(eyeDot * 2, 3 * scale);
+      const noseSize = norm.nose_size * 10 * scale;
+      const noseY = cy + ry * 0.15;
+      const mouthSize = norm.mouth_size * (noseY - eyeY) * 0.85;
+      const wCount = Math.round(norm.whisker_count * 15);
+      const wBaseLen = 22 * scale, MAX_PER_LAYER = 5, wSpacing = 8 * scale;
+      const wStartX = norm.whisker_pos * rx;
+      const whiskers = [];
+      for (let i = 0; i < wCount; i++) {
+        const layer = Math.floor(i / MAX_PER_LAYER);
+        const idxInLayer = i % MAX_PER_LAYER;
+        const countInLayer = Math.min(wCount - layer * MAX_PER_LAYER, MAX_PER_LAYER);
+        const wLen = wBaseLen * (1 + layer * 0.5);
+        const startX = wStartX + layer * wBaseLen;
+        const wy = noseY - (countInLayer - 1) * wSpacing / 2 + idxInLayer * wSpacing;
+        const spread = (idxInLayer - (countInLayer - 1) / 2) * 0.15;
+        const ex = wLen * Math.cos(spread), ey = wLen * Math.sin(spread) * 0.4;
+        whiskers.push(
+          <line key={`r${i}`} x1={cx+startX} y1={wy} x2={cx+startX+ex} y2={wy+ey} stroke="#f0deca" strokeWidth={0.9*scale} strokeLinecap="round"/>,
+          <line key={`l${i}`} x1={cx-startX} y1={wy} x2={cx-startX-ex} y2={wy+ey} stroke="#f0deca" strokeWidth={0.9*scale} strokeLinecap="round"/>
+        );
+      }
+      return (
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+          <path d={earPath(1)} fill="#f0deca" stroke="none"/>
+          <path d={earPath(-1)} fill="#f0deca" stroke="none"/>
+          <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="#fef8f0" stroke="none"/>
+          <g transform={`rotate(${norm.eye_angle*360},${cx+eyeX},${eyeY})`}>
+            <line x1={cx+eyeX-eyeHalf.dx} y1={eyeY-eyeHalf.dy} x2={cx+eyeX+eyeHalf.dx} y2={eyeY+eyeHalf.dy} stroke="#1a1a1a" strokeWidth={eyeStrokeW} strokeLinecap="round"/>
+          </g>
+          <g transform={`rotate(${norm.eye_angle*360},${cx-eyeX},${eyeY})`}>
+            <line x1={cx-eyeX-eyeHalf.dx} y1={eyeY-eyeHalf.dy} x2={cx-eyeX+eyeHalf.dx} y2={eyeY+eyeHalf.dy} stroke="#1a1a1a" strokeWidth={eyeStrokeW} strokeLinecap="round"/>
+          </g>
+          {noseSize > 0.5 && (
+            <g transform={`rotate(${norm.nose_angle*360},${cx},${noseY})`}>
+              <polygon points={`${cx},${noseY-noseSize*0.5} ${cx-noseSize},${noseY+noseSize*0.5} ${cx+noseSize},${noseY+noseSize*0.5}`} fill="#e899a0" stroke="none"/>
+            </g>
+          )}
+          {mouthSize > 0.5 && (<>
+            <path d={`M ${cx} ${noseY+noseSize*0.5} Q ${cx-mouthSize*0.6} ${noseY+noseSize*0.5+mouthSize*0.7} ${cx-mouthSize} ${noseY+noseSize*0.5+mouthSize*0.4}`} fill="none" stroke="#666" strokeWidth={1.4*scale} strokeLinecap="round"/>
+            <path d={`M ${cx} ${noseY+noseSize*0.5} Q ${cx+mouthSize*0.6} ${noseY+noseSize*0.5+mouthSize*0.7} ${cx+mouthSize} ${noseY+noseSize*0.5+mouthSize*0.4}`} fill="none" stroke="#666" strokeWidth={1.4*scale} strokeLinecap="round"/>
+          </>)}
+          {whiskers}
+        </svg>
+      );
+    }
+
+    function CatRadar({ current, myAvg, allAvg }) {
+      const data = AXES.map(ax => ({ axis: ax, 今回: current[ax], 自分YES平均: myAvg ? myAvg[ax] : undefined, みんなYES平均: allAvg ? allAvg[ax] : undefined }));
+      return (
+        <ResponsiveContainer width="100%" height={240}>
+          <RadarChart data={data} margin={{top:8,right:28,bottom:8,left:28}}>
+            <PolarGrid stroke="#d4c5b5"/>
+            <PolarAngleAxis dataKey="axis" tick={{fill:"#7a6a5a",fontSize:12}}/>
+            <Radar name="今回" dataKey="今回" stroke="#e8734a" fill="#e8734a" fillOpacity={0.15} strokeWidth={2} dot/>
+            {myAvg && <Radar name="自分YES平均" dataKey="自分YES平均" stroke="#4a90e8" fill="#4a90e8" fillOpacity={0.1} strokeWidth={1.5} strokeDasharray="4 2"/>}
+            {allAvg && <Radar name="みんなYES平均" dataKey="みんなYES平均" stroke="#52b06a" fill="#52b06a" fillOpacity={0.1} strokeWidth={1.5} strokeDasharray="2 3"/>}
+            <Legend wrapperStyle={{fontSize:11}}/>
+          </RadarChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    function App() {
+      const [params, setParams] = useState(() => randomParams());
+      const votesRef = useRef([]);
+      const [votesSnapshot, setVotesSnapshot] = useState([]);
+      const [myYesVotes, setMyYesVotes] = useState([]);
+      const [phase, setPhase] = useState("idle");
+      const [lastAnswer, setLastAnswer] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        loadVotesFromFirestore().then(v => {
+          votesRef.current = v;
+          setVotesSnapshot([...v]);
+          setLoading(false);
+        });
+      }, []);
+
+      const norm = normalize(params);
+      const key = paramsKey(params);
+      const hasVoted = votesRef.current.some(v => v.key === key);
+      const yesCountForThis = votesRef.current.filter(v => v.key === key && v.isYes).length;
+      const yesDisabled = hasVoted || yesCountForThis >= YES_LIMIT;
+      const noDisabled = hasVoted;
+
+      async function handleVote(isYes) {
+        if (votesRef.current.some(v => v.key === key)) return;
+        if (isYes && votesRef.current.filter(v => v.key === key && v.isYes).length >= YES_LIMIT) return;
+        const entry = { key, params: { ...params }, isYes, ts: Date.now() };
+        votesRef.current = [...votesRef.current, entry];
+        setVotesSnapshot([...votesRef.current]);
+        if (isYes) setMyYesVotes(prev => [...prev, normalize(params)]);
+        setLastAnswer(isYes);
+        setPhase("voted");
+        await saveVoteToFirestore(entry);
+      }
+
+      function handleNext() { setParams(randomParams()); setPhase("idle"); setLastAnswer(null); }
+
+      const allVotes = votesSnapshot;
+      const totalCount = allVotes.length;
+      const yesCount = allVotes.filter(v => v.isYes).length;
+      const currentScores = calcAxisScores(norm);
+      const myAvgNorm = myYesVotes.length ? (() => {
+        const avg = {};
+        PARAM_KEYS.forEach(k => { avg[k] = myYesVotes.reduce((s, n) => s + n[k], 0) / myYesVotes.length; });
+        return avg;
+      })() : null;
+      const allAvgNorm = calcAvgNormParams(allVotes.filter(v => v.isYes));
+      const myAvgScores = myAvgNorm ? calcAxisScores(myAvgNorm) : null;
+      const allAvgScores = allAvgNorm ? calcAxisScores(allAvgNorm) : null;
+
+      return (
+        <div style={{minHeight:"100vh",background:"#faf5ef",fontFamily:"'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif",color:"#3a2e28",display:"flex",flexDirection:"column",alignItems:"center",paddingBottom:48}}>
+          <div style={{width:"100%",background:"#3a2e28",color:"#faf5ef",padding:"16px 24px",textAlign:"center",marginBottom:20,boxShadow:"0 2px 12px rgba(0,0,0,0.15)"}}>
+            <div style={{fontSize:20,fontWeight:700,letterSpacing:"0.05em"}}>どこまでが猫ですか？</div>
+            <div style={{fontSize:11,opacity:0.55,marginTop:3}}>累計 {totalCount} 票 ／ YES {yesCount} 票</div>
+          </div>
+          <div style={{width:"100%",maxWidth:460,padding:"0 14px"}}>
+            <div style={{background:"white",borderRadius:20,padding:"20px 0 12px",display:"flex",flexDirection:"column",alignItems:"center",boxShadow:"0 2px 16px rgba(58,46,40,0.09)",marginBottom:14,position:"relative"}}>
+              <CatFace norm={norm} size={200}/>
+              {phase==="voted" && <div style={{position:"absolute",top:14,right:16,fontSize:30,animation:"pop .3s ease"}}>{lastAnswer?"😺":"🙅"}</div>}
+            </div>
+            <div style={{background:"white",borderRadius:14,padding:"12px 16px",marginBottom:14,boxShadow:"0 1px 8px rgba(58,46,40,0.06)",fontSize:11}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px 14px"}}>
+                {PARAM_KEYS.map(k=>(
+                  <div key={k} style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{color:"#9a8a7a",whiteSpace:"nowrap",width:68}}>{PARAMS[k].label}</span>
+                    <div style={{flex:1,height:4,background:"#ede8e2",borderRadius:2,overflow:"hidden"}}>
+                      <div style={{width:`${norm[k]*100}%`,height:"100%",background:"#e8734a",borderRadius:2}}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10,marginBottom:10}}>
+              <button onClick={()=>handleVote(true)} disabled={yesDisabled||loading} style={{flex:1,padding:"14px",borderRadius:14,border:`2px solid ${yesDisabled?"#ddd":"#52b06a"}`,background:"white",color:yesDisabled?"#bbb":"#52b06a",fontSize:17,fontWeight:700,cursor:yesDisabled?"not-allowed":"pointer",fontFamily:"inherit"}}>😺 猫です</button>
+              <button onClick={()=>handleVote(false)} disabled={noDisabled||loading} style={{flex:1,padding:"14px",borderRadius:14,border:`2px solid ${noDisabled?"#ddd":"#e8734a"}`,background:"white",color:noDisabled?"#bbb":"#e8734a",fontSize:17,fontWeight:700,cursor:noDisabled?"not-allowed":"pointer",fontFamily:"inherit"}}>🙅 猫じゃない</button>
+            </div>
+            <button onClick={handleNext} style={{width:"100%",padding:"13px",borderRadius:14,background:phase==="voted"?"#3a2e28":"white",color:phase==="voted"?"#faf5ef":"#9a8a7a",border:`2px solid ${phase==="voted"?"#3a2e28":"#d4c5b5"}`,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.04em",marginBottom:16}}>次のランダム猫を見る 🐱</button>
+            <div style={{background:"white",borderRadius:20,padding:"16px 6px 8px",boxShadow:"0 2px 16px rgba(58,46,40,0.08)",marginBottom:14}}>
+              <div style={{fontSize:12,fontWeight:700,textAlign:"center",color:"#7a6a5a",marginBottom:2}}>猫パラメータ レーダー</div>
+              <CatRadar current={currentScores} myAvg={myAvgScores} allAvg={allAvgScores}/>
+              <div style={{fontSize:10,color:"#b0a090",textAlign:"center"}}>自分YES: {myYesVotes.length}票 ／ みんなYES: {yesCount}/{totalCount}票</div>
+            </div>
+            {(allAvgNorm||myAvgNorm) ? (()=>{
+              const allFar=calcFarthestNorm(allAvgNorm), myFar=calcFarthestNorm(myAvgNorm);
+              const faces=[
+                {label:"みんなの平均",norm:allAvgNorm,sub:`${yesCount}票から`},
+                {label:"みんなの平均から遠い",norm:allFar,sub:"各パラメータの逆端"},
+                {label:"自分の平均",norm:myAvgNorm,sub:`${myYesVotes.length}票から`},
+                {label:"自分の平均から遠い",norm:myFar,sub:"各パラメータの逆端"},
+              ];
+              return (
+                <div style={{background:"white",borderRadius:20,padding:"16px 10px 12px",boxShadow:"0 2px 16px rgba(58,46,40,0.08)"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#7a6a5a",textAlign:"center",marginBottom:12}}>猫の顔いろいろ</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    {faces.map(({label,norm,sub})=>(
+                      <div key={label} style={{textAlign:"center"}}>
+                        <div style={{fontSize:10,fontWeight:700,color:"#7a6a5a",marginBottom:2}}>{label}</div>
+                        <div style={{fontSize:9,color:"#b0a090",marginBottom:4}}>{sub}</div>
+                        {norm?<CatFace norm={norm} size={140}/>:<div style={{height:140,display:"flex",alignItems:"center",justifyContent:"center",color:"#ccc",fontSize:11}}>投票待ち</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })() : (
+              <div style={{background:"white",borderRadius:20,padding:"28px 16px",boxShadow:"0 2px 16px rgba(58,46,40,0.08)",textAlign:"center",color:"#b0a090",fontSize:13}}>😺 投票が集まると平均猫が現れます</div>
+            )}
+          </div>
+          <style>{`@keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.25)}100%{transform:scale(1);opacity:1}}button:hover:not(:disabled){opacity:.88}`}</style>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App/>);
+  </script>
 </body>
 </html>
