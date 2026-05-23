@@ -90,6 +90,17 @@
       return far;
     }
 
+    // 自分のYES票から各パラメータの最大・最小を取得してギリ猫を作る
+    function calcGiriGiriNorm(myYesVotes, useMax) {
+      if (!myYesVotes.length) return null;
+      const result = {};
+      PARAM_KEYS.forEach(k => {
+        const vals = myYesVotes.map(n => n[k]);
+        result[k] = useMax ? Math.max(...vals) : Math.min(...vals);
+      });
+      return result;
+    }
+
     // ============================================================
     // SVG 猫顔
     // ============================================================
@@ -272,6 +283,9 @@
             <div style={{fontSize:11,opacity:0.55,marginTop:3}}>累計 {totalCount} 票 ／ YES {yesCount} 票</div>
           </div>
           <div style={s.inner}>
+            <div style={{background:"#fff8e7",borderRadius:10,padding:"8px 12px",marginBottom:12,fontSize:11,color:"#a07830",textAlign:"center"}}>
+              ⚠️ 自分の平均はリロードすると消えます
+            </div>
             <div style={s.card}>
               <CatFace norm={norm} size={200}/>
               {phase==="voted" && <div style={{position:"absolute",top:14,right:16,fontSize:30}}>{lastAnswer?"😺":"🙅"}</div>}
@@ -302,9 +316,20 @@
             </div>
 
             <button onClick={handleNext}
-              style={{width:"100%",padding:"13px",borderRadius:14,background:phase==="voted"?"#3a2e28":"white",color:phase==="voted"?"#faf5ef":"#9a8a7a",border:`2px solid ${phase==="voted"?"#3a2e28":"#d4c5b5"}`,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>
+              style={{width:"100%",padding:"13px",borderRadius:14,background:phase==="voted"?"#3a2e28":"white",color:phase==="voted"?"#faf5ef":"#9a8a7a",border:`2px solid ${phase==="voted"?"#3a2e28":"#d4c5b5"}`,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:10}}>
               次のランダム猫を見る 🐱
             </button>
+
+            {phase==="voted" && lastAnswer && (
+              <button onClick={()=>{
+                const text = encodeURIComponent("これはネコだと思う");
+                const url = encodeURIComponent("https://kyoyouneko.vercel.app");
+                window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, "_blank");
+              }} style={{width:"100%",padding:"13px",borderRadius:14,background:"#1da1f2",color:"white",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>
+                𝕏 これはネコだと思う
+              </button>
+            )}
+            {phase==="voted" && !lastAnswer && <div style={{marginBottom:16}}/>}
 
             <div style={{background:"white",borderRadius:20,padding:"16px 12px 8px",boxShadow:"0 2px 16px rgba(58,46,40,0.08)",marginBottom:14}}>
               <div style={{fontSize:12,fontWeight:700,textAlign:"center",color:"#7a6a5a",marginBottom:8}}>猫パラメータ レーダー</div>
@@ -314,11 +339,15 @@
 
             {(allAvgNorm||myAvgNorm) ? (()=>{
               const allFar=calcFarthestNorm(allAvgNorm), myFar=calcFarthestNorm(myAvgNorm);
+              const giri1=calcGiriGiriNorm(myYesVotes, true);
+              const giri2=calcGiriGiriNorm(myYesVotes, false);
               const faces=[
                 {label:"みんなの平均",norm:allAvgNorm,sub:`${yesCount}票から`},
                 {label:"みんなの平均から遠い",norm:allFar,sub:"各パラメータの逆端"},
                 {label:"自分の平均",norm:myAvgNorm,sub:`${myYesVotes.length}票から`},
                 {label:"自分の平均から遠い",norm:myFar,sub:"各パラメータの逆端"},
+                {label:"ギリ猫①",norm:giri1,sub:"自分YES範囲の最大値"},
+                {label:"ギリ猫②",norm:giri2,sub:"自分YES範囲の最小値"},
               ];
               return (
                 <div style={{background:"white",borderRadius:20,padding:"16px 10px 12px",boxShadow:"0 2px 16px rgba(58,46,40,0.08)"}}>
