@@ -102,6 +102,141 @@
     }
 
     // ============================================================
+    // Canvas上に猫を描画する関数（画像出力用）
+    // ============================================================
+    function drawCatOnCanvas(ctx, norm, x, y, size) {
+      const cx = x + size / 2, cy = y + size * 0.55;
+      const scale = size / 200;
+      const rx = (40 + (1 - norm.outline_ratio) * 20) * scale;
+      const ry = (38 + norm.outline_ratio * 22) * scale;
+      const earSize = (16 + norm.ear_size * 22) * scale;
+      const earPointy = norm.ear_pointy;
+      const earAngleDeg = 90 - norm.ear_position * 52;
+      const earAngleRad = (earAngleDeg * Math.PI) / 180;
+
+      function getEarPoints(sign) {
+        const ang = sign === 1 ? earAngleRad : Math.PI - earAngleRad;
+        const ec = { x: cx + rx * Math.cos(ang), y: cy - ry * Math.sin(ang) };
+        const dir = { dx: Math.cos(ang), dy: -Math.sin(ang) };
+        const perp = { dx: -dir.dy * sign, dy: dir.dx * sign };
+        const half = earSize * 0.5, tipDist = earSize * (0.7 + earPointy * 0.7);
+        return {
+          b1: { x: ec.x + perp.dx * half, y: ec.y + perp.dy * half },
+          b2: { x: ec.x - perp.dx * half, y: ec.y - perp.dy * half },
+          tip: { x: ec.x + dir.dx * tipDist, y: ec.y + dir.dy * tipDist },
+          half, ec,
+        };
+      }
+
+      // 耳
+      [1, -1].forEach(sign => {
+        const { b1, b2, tip, half, ec } = getEarPoints(sign);
+        ctx.beginPath();
+        ctx.moveTo(b1.x, b1.y);
+        if (earPointy < 0.05) {
+          ctx.arc(ec.x, ec.y, half, 0, Math.PI, sign === 1);
+        } else if (earPointy < 0.5) {
+          ctx.quadraticCurveTo(tip.x, tip.y, b2.x, b2.y);
+        } else {
+          ctx.lineTo(tip.x, tip.y);
+          ctx.lineTo(b2.x, b2.y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = "#f0deca";
+        ctx.fill();
+      });
+
+      // 輪郭
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fillStyle = "#fef8f0";
+      ctx.fill();
+
+      // 目
+      const eyeDot = 1.5 * scale, eyeLineLen = 7 * scale;
+      const eyeY = cy - ry * 0.22, eyeX = rx * 0.44;
+      const eyeHalf = norm.eye_ratio < 0.5
+        ? { dx: 0, dy: eyeLineLen * (1 - norm.eye_ratio * 2) }
+        : { dx: eyeLineLen * (norm.eye_ratio - 0.5) * 2, dy: 0 };
+      const eyeStrokeW = Math.max(eyeDot * 2, 3 * scale);
+      const eyeRot = norm.eye_angle * Math.PI * 2;
+
+      [-1, 1].forEach(sign => {
+        const ecx = cx + sign * eyeX;
+        ctx.save();
+        ctx.translate(ecx, eyeY);
+        ctx.rotate(sign * eyeRot);
+        ctx.beginPath();
+        ctx.moveTo(-eyeHalf.dx, -eyeHalf.dy);
+        ctx.lineTo(eyeHalf.dx, eyeHalf.dy);
+        ctx.strokeStyle = "#1a1a1a";
+        ctx.lineWidth = eyeStrokeW;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // 鼻
+      const noseSize = norm.nose_size * 10 * scale;
+      const noseY = cy + ry * 0.15;
+      if (noseSize > 0.5) {
+        const noseRot = norm.nose_angle * Math.PI * 2;
+        ctx.save();
+        ctx.translate(cx, noseY);
+        ctx.rotate(noseRot);
+        ctx.beginPath();
+        ctx.moveTo(0, -noseSize * 0.5);
+        ctx.lineTo(-noseSize, noseSize * 0.5);
+        ctx.lineTo(noseSize, noseSize * 0.5);
+        ctx.closePath();
+        ctx.fillStyle = "#e899a0";
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 口
+      const mouthSize = norm.mouth_size * (noseY - (cy - ry * 0.22)) * 0.85;
+      if (mouthSize > 0.5) {
+        const my = noseY + noseSize * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(cx, my);
+        ctx.quadraticCurveTo(cx - mouthSize * 0.6, my + mouthSize * 0.7, cx - mouthSize, my + mouthSize * 0.4);
+        ctx.strokeStyle = "#666";
+        ctx.lineWidth = 1.4 * scale;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx, my);
+        ctx.quadraticCurveTo(cx + mouthSize * 0.6, my + mouthSize * 0.7, cx + mouthSize, my + mouthSize * 0.4);
+        ctx.stroke();
+      }
+
+      // ヒゲ
+      const wCount = Math.round(norm.whisker_count * 15);
+      const wBaseLen = 22 * scale, MAX_PER_LAYER = 5, wSpacing = 8 * scale;
+      const wStartX = norm.whisker_pos * rx;
+      for (let i = 0; i < wCount; i++) {
+        const layer = Math.floor(i / MAX_PER_LAYER);
+        const idxInLayer = i % MAX_PER_LAYER;
+        const countInLayer = Math.min(wCount - layer * MAX_PER_LAYER, MAX_PER_LAYER);
+        const wLen = wBaseLen * (1 + layer * 0.5);
+        const startX = wStartX + layer * wBaseLen;
+        const wy = noseY - (countInLayer - 1) * wSpacing / 2 + idxInLayer * wSpacing;
+        const spread = (idxInLayer - (countInLayer - 1) / 2) * 0.15;
+        const ex = wLen * Math.cos(spread), ey = wLen * Math.sin(spread) * 0.4;
+        [1, -1].forEach(sign => {
+          ctx.beginPath();
+          ctx.moveTo(cx + sign * startX, wy);
+          ctx.lineTo(cx + sign * (startX + ex), wy + ey);
+          ctx.strokeStyle = "#f0deca";
+          ctx.lineWidth = 0.9 * scale;
+          ctx.lineCap = "round";
+          ctx.stroke();
+        });
+      }
+    }
+
+    // ============================================================
     // SVG 猫顔
     // ============================================================
     function CatFace({ norm, size = 200 }) {
@@ -254,6 +389,136 @@
 
       function handleNext() { setParams(randomParams()); setPhase("idle"); setLastAnswer(null); }
 
+      async function handleShareResult(myAvg, myFar, giri1, giri2, myScores) {
+        const W = 800, H = 600;
+        const canvas = document.createElement("canvas");
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext("2d");
+
+        // 背景
+        ctx.fillStyle = "#faf5ef";
+        ctx.fillRect(0, 0, W, H);
+
+        // タイトル
+        ctx.fillStyle = "#3a2e28";
+        ctx.font = "bold 22px 'Hiragino Kaku Gothic ProN', sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("どこまでが猫ですか？ 私の猫判定", W / 2, 36);
+
+        // 4枚の猫（2×2グリッド）
+        const faceSize = 150;
+        const faces = [
+          { label: "自分の平均", norm: myAvg },
+          { label: "平均から遠い", norm: myFar },
+          { label: "ギリ猫①", norm: giri1 },
+          { label: "ギリ猫②", norm: giri2 },
+        ];
+        const cols = 2, rows = 2;
+        const cellW = 200, cellH = 200;
+        const startX = 20, startY = 55;
+
+        faces.forEach(({ label, norm }, i) => {
+          if (!norm) return;
+          const col = i % cols, row = Math.floor(i / cols);
+          const fx = startX + col * cellW, fy = startY + row * cellH;
+          // カードBG
+          ctx.fillStyle = "white";
+          ctx.beginPath();
+          ctx.roundRect(fx, fy, cellW - 10, cellH - 10, 12);
+          ctx.fill();
+          // ラベル
+          ctx.fillStyle = "#7a6a5a";
+          ctx.font = "bold 12px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(label, fx + (cellW - 10) / 2, fy + 18);
+          // 猫
+          drawCatOnCanvas(ctx, norm, fx + (cellW - 10) / 2 - faceSize / 2, fy + 22, faceSize);
+        });
+
+        // レーダーチャート（右側）
+        if (myScores) {
+          const radarX = startX + cols * cellW + 10;
+          const radarY = startY + 10;
+          const radarR = 170;
+          const radarCx = radarX + radarR + 10;
+          const radarCy = radarY + radarR + 20;
+
+          ctx.fillStyle = "#7a6a5a";
+          ctx.font = "bold 13px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("猫パラメータ", radarCx, radarY);
+
+          // グリッド
+          [25, 50, 75, 100].forEach(r => {
+            ctx.beginPath();
+            AXES.forEach((_, i) => {
+              const ang = (i / AXES.length) * Math.PI * 2 - Math.PI / 2;
+              const rx2 = radarR * r / 100, ry2 = radarR * r / 100;
+              const px = radarCx + rx2 * Math.cos(ang);
+              const py = radarCy + ry2 * Math.sin(ang);
+              i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            });
+            ctx.closePath();
+            ctx.strokeStyle = "#d4c5b5";
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+          });
+
+          // 軸線とラベル
+          AXES.forEach((ax, i) => {
+            const ang = (i / AXES.length) * Math.PI * 2 - Math.PI / 2;
+            ctx.beginPath();
+            ctx.moveTo(radarCx, radarCy);
+            ctx.lineTo(radarCx + radarR * Math.cos(ang), radarCy + radarR * Math.sin(ang));
+            ctx.strokeStyle = "#d4c5b5";
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+            ctx.fillStyle = "#7a6a5a";
+            ctx.font = "13px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(ax,
+              radarCx + (radarR + 18) * Math.cos(ang),
+              radarCy + (radarR + 18) * Math.sin(ang) + 4
+            );
+          });
+
+          // 自分の平均ポリゴン
+          ctx.beginPath();
+          AXES.forEach((ax, i) => {
+            const ang = (i / AXES.length) * Math.PI * 2 - Math.PI / 2;
+            const r = radarR * myScores[ax] / 100;
+            const px = radarCx + r * Math.cos(ang);
+            const py = radarCy + r * Math.sin(ang);
+            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+          });
+          ctx.closePath();
+          ctx.fillStyle = "rgba(74,144,232,0.2)";
+          ctx.fill();
+          ctx.strokeStyle = "#4a90e8";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        // URL
+        ctx.fillStyle = "#b0a090";
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText("kyoyouneko.vercel.app", W - 16, H - 12);
+
+        // ダウンロード
+        const a = document.createElement("a");
+        a.href = canvas.toDataURL("image/png");
+        a.download = "neko-result.png";
+        a.click();
+
+        // X投稿
+        setTimeout(() => {
+          const text = encodeURIComponent("これはネコだと思う\n#どこまでが猫ですか");
+          const url = encodeURIComponent("https://kyoyouneko.vercel.app");
+          window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, "_blank");
+        }, 500);
+      }
+
       const allVotes = votesSnapshot;
       const totalCount = allVotes.length;
       const yesCount = allVotes.filter(v => v.isYes).length;
@@ -266,6 +531,9 @@
       const allAvgNorm = calcAvgNormParams(allVotes.filter(v => v.isYes));
       const myAvgScores = myAvgNorm ? calcAxisScores(myAvgNorm) : null;
       const allAvgScores = allAvgNorm ? calcAxisScores(allAvgNorm) : null;
+      const myFarNorm = calcFarthestNorm(myAvgNorm);
+      const giri1Norm = calcGiriGiriNorm(myYesVotes, true);
+      const giri2Norm = calcGiriGiriNorm(myYesVotes, false);
 
       const s = {
         wrap: {minHeight:"100vh",background:"#faf5ef",fontFamily:"'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif",color:"#3a2e28",display:"flex",flexDirection:"column",alignItems:"center",paddingBottom:48},
@@ -320,16 +588,13 @@
               次のランダム猫を見る 🐱
             </button>
 
-            {phase==="voted" && lastAnswer && (
-              <button onClick={()=>{
-                const text = encodeURIComponent("これはネコだと思う");
-                const url = encodeURIComponent("https://kyoyouneko.vercel.app");
-                window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, "_blank");
-              }} style={{width:"100%",padding:"13px",borderRadius:14,background:"#1da1f2",color:"white",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>
-                𝕏 これはネコだと思う
+            {(myAvgNorm) && (
+              <button onClick={()=>handleShareResult(myAvgNorm, myFarNorm, giri1Norm, giri2Norm, myAvgScores)}
+                style={{width:"100%",padding:"13px",borderRadius:14,background:"#1da1f2",color:"white",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>
+                📊 結果をシェア（画像保存＋X投稿）
               </button>
             )}
-            {phase==="voted" && !lastAnswer && <div style={{marginBottom:16}}/>}
+            {!myAvgNorm && <div style={{marginBottom:16}}/>}
 
             <div style={{background:"white",borderRadius:20,padding:"16px 12px 8px",boxShadow:"0 2px 16px rgba(58,46,40,0.08)",marginBottom:14}}>
               <div style={{fontSize:12,fontWeight:700,textAlign:"center",color:"#7a6a5a",marginBottom:8}}>猫パラメータ レーダー</div>
@@ -341,6 +606,7 @@
               const allFar=calcFarthestNorm(allAvgNorm), myFar=calcFarthestNorm(myAvgNorm);
               const giri1=calcGiriGiriNorm(myYesVotes, true);
               const giri2=calcGiriGiriNorm(myYesVotes, false);
+              const myFarNorm=myFar, giri1Norm=giri1, giri2Norm=giri2;
               const faces=[
                 {label:"みんなの平均",norm:allAvgNorm,sub:`${yesCount}票から`},
                 {label:"みんなの平均から遠い",norm:allFar,sub:"各パラメータの逆端"},
