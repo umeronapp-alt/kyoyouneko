@@ -361,11 +361,17 @@
       const [loading, setLoading] = useState(true);
 
       useEffect(() => {
+        const timer = setTimeout(() => setLoading(false), 5000); // 5秒でタイムアウト
         loadVotes().then(v => {
           votesRef.current = v;
           setVotesSnapshot([...v]);
           setLoading(false);
+          clearTimeout(timer);
+        }).catch(() => {
+          setLoading(false);
+          clearTimeout(timer);
         });
+        return () => clearTimeout(timer);
       }, []);
 
       const norm = normalize(params);
