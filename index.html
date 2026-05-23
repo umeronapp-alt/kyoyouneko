@@ -8,50 +8,38 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
-    const { RadarChart, PolarGrid, PolarAngleAxis, Radar, Legend, ResponsiveContainer } = Recharts;
-
-    const firebaseConfig = {
+  <script>
+    firebase.initializeApp({
       apiKey: "AIzaSyCO5gK_OTHnjCZ2JAG__AsH2ZlqcXKXIMI",
       authDomain: "kyoyouneko-b42f5.firebaseapp.com",
       projectId: "kyoyouneko-b42f5",
       storageBucket: "kyoyouneko-b42f5.firebasestorage.app",
       messagingSenderId: "674428072939",
       appId: "1:674428072939:web:44a77bc5a4d5eef9b19fae",
-    };
-
-    let firestoreDb = null;
-    let firebaseImported = false;
-
-    async function getDb() {
-      if (firestoreDb) return firestoreDb;
-      const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-      const { getFirestore } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-      const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-      firestoreDb = getFirestore(app);
-      return firestoreDb;
-    }
+    });
+    const db = firebase.firestore();
 
     async function loadVotesFromFirestore() {
       try {
-        const { collection, getDocs, query } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        const db = await getDb();
-        const snap = await getDocs(query(collection(db, "votes")));
+        const snap = await db.collection("votes").get();
         return snap.docs.map(d => d.data());
-      } catch (e) { console.error(e); return []; }
+      } catch(e) { console.error(e); return []; }
     }
 
     async function saveVoteToFirestore(entry) {
       try {
-        const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        const db = await getDb();
-        await addDoc(collection(db, "votes"), entry);
-      } catch (e) { console.error(e); }
+        await db.collection("votes").add(entry);
+      } catch(e) { console.error(e); }
     }
+  </script>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    const { RadarChart, PolarGrid, PolarAngleAxis, Radar, Legend, ResponsiveContainer } = Recharts;
 
     const PARAMS = {
       outline_ratio:  { axis: "輪郭", label: "縦横比" },
