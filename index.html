@@ -277,9 +277,9 @@
     }
 
     // ============================================================
-    // 画像生成（4:3）
+    // 画像生成（4:3）新レイアウト
     // ============================================================
-    function generateResultDataURL(myAvg, myFar, giri1, giri2, myScores) {
+    function generateResultDataURL(myAvg, myFar, giri1, giri2, yesCount) {
       const W = 560, H = 420; // 4:3
       const canvas = document.createElement("canvas");
       canvas.width = W; canvas.height = H;
@@ -288,90 +288,98 @@
       ctx.fillStyle = "#faf5ef";
       ctx.fillRect(0, 0, W, H);
 
-      // ヘッダー
+      // ヘッダー（1行）
+      const HEADER_H = 44;
       ctx.fillStyle = "#3a2e28";
-      ctx.font = "bold 26px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("許容猫", W/2, 32);
-      ctx.font = "13px sans-serif";
-      ctx.fillStyle = "#7a6a5a";
-      ctx.fillText("どこまでが猫ですか？", W/2, 50);
-      ctx.font = "11px sans-serif";
-      ctx.fillStyle = "#b0a090";
-      ctx.fillText("判定レポート", W/2, 66);
+      ctx.fillRect(0, 0, W, HEADER_H);
+      ctx.fillStyle = "#faf5ef";
+      ctx.font = "bold 20px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("許容猫", 16, 28);
+      ctx.font = "12px sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.fillText("判定レポート", 72, 28);
 
-      // レーダー（左上エリア）
-      if (myScores) {
-        const radarR = 80, radarCx = 130, radarCy = 160;
-        [25,50,75,100].forEach(pct => {
-          ctx.beginPath();
-          AXES.forEach((_, i) => {
-            const ang = (i/AXES.length)*Math.PI*2-Math.PI/2;
-            const r = radarR*pct/100;
-            const px=radarCx+r*Math.cos(ang), py=radarCy+r*Math.sin(ang);
-            i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
-          });
-          ctx.closePath(); ctx.strokeStyle="#d4c5b5"; ctx.lineWidth=0.8; ctx.stroke();
-        });
-        AXES.forEach((ax,i) => {
-          const ang=(i/AXES.length)*Math.PI*2-Math.PI/2;
-          ctx.beginPath(); ctx.moveTo(radarCx,radarCy);
-          ctx.lineTo(radarCx+radarR*Math.cos(ang),radarCy+radarR*Math.sin(ang));
-          ctx.strokeStyle="#d4c5b5"; ctx.lineWidth=0.8; ctx.stroke();
-          ctx.fillStyle="#7a6a5a"; ctx.font="11px sans-serif"; ctx.textAlign="center";
-          ctx.fillText(ax, radarCx+(radarR+14)*Math.cos(ang), radarCy+(radarR+14)*Math.sin(ang)+4);
-        });
-        ctx.beginPath();
-        AXES.forEach((ax,i) => {
-          const ang=(i/AXES.length)*Math.PI*2-Math.PI/2;
-          const r=radarR*myScores[ax]/100;
-          const px=radarCx+r*Math.cos(ang), py=radarCy+r*Math.sin(ang);
-          i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
-        });
-        ctx.closePath(); ctx.fillStyle="rgba(74,144,232,0.2)"; ctx.fill();
-        ctx.strokeStyle="#4a90e8"; ctx.lineWidth=2; ctx.stroke();
-      }
+      const BODY_Y = HEADER_H + 8;
+      const BODY_H = H - BODY_Y - 20;
+      const LEFT_W = W / 2 - 4;
+      const RIGHT_W = W / 2 - 4;
+      const RIGHT_X = W / 2 + 4;
+      const SMALL_H = BODY_H / 2 - 4;
+      const SMALL_W = RIGHT_W / 2 - 4;
 
-      // 4枚の猫（2列×2行、右半分〜全体下部）
-      const faces = [
-        { label: "自分の平均", sub: "私が猫と感じた平均", norm: myAvg },
-        { label: "平均から遠い", sub: "私の猫の対極", norm: myFar },
-        { label: "ギリ猫①", sub: "YES範囲の最大値", norm: giri1 },
-        { label: "ギリ猫②", sub: "YES範囲の最小値", norm: giri2 },
-      ];
-
-      const faceSize = 100;
-      const cellW = 130, cellH = 160;
-      const gridStartX = W/2 - cellW, gridStartY = 75;
-
-      faces.forEach(({ label, sub, norm }, i) => {
-        if (!norm) return;
-        const col = i % 2, row = Math.floor(i / 2);
-        const fx = gridStartX + col * cellW + 5;
-        const fy = gridStartY + row * cellH;
-
-        // カードBG
+      // 左半分：平均の猫（大きく）
+      if (myAvg) {
         ctx.fillStyle = "white";
         ctx.beginPath();
-        ctx.roundRect(fx, fy, cellW - 6, cellH - 6, 10);
+        ctx.roundRect(8, BODY_Y, LEFT_W - 4, BODY_H, 12);
         ctx.fill();
-
-        // 猫（上寄せ）
-        drawCatOnCanvas(ctx, norm, fx + (cellW-6)/2 - faceSize/2, fy + 6, faceSize);
-
-        // ラベル（顎の下の余白部分）
+        const bigSize = Math.min(LEFT_W - 4, BODY_H) - 30;
+        drawCatOnCanvas(ctx, myAvg, 8 + (LEFT_W-4)/2 - bigSize/2, BODY_Y + 8, bigSize);
         ctx.fillStyle = "#3a2e28";
-        ctx.font = "bold 10px sans-serif";
+        ctx.font = "bold 12px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(label, fx + (cellW-6)/2, fy + faceSize + 18);
-        ctx.fillStyle = "#b0a090";
-        ctx.font = "9px sans-serif";
-        ctx.fillText(sub, fx + (cellW-6)/2, fy + faceSize + 30);
-      });
+        ctx.fillText("自分の平均", 8 + (LEFT_W-4)/2, BODY_Y + BODY_H - 14);
+      }
+
+      // 右上左：ギリ猫①
+      if (giri1) {
+        const fx = RIGHT_X, fy = BODY_Y;
+        ctx.fillStyle = "white";
+        ctx.beginPath(); ctx.roundRect(fx, fy, SMALL_W, SMALL_H, 10); ctx.fill();
+        const s = Math.min(SMALL_W, SMALL_H) - 28;
+        drawCatOnCanvas(ctx, giri1, fx + SMALL_W/2 - s/2, fy + 4, s);
+        ctx.fillStyle = "#3a2e28"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("ギリ猫①", fx + SMALL_W/2, fy + SMALL_H - 6);
+      }
+
+      // 右上右：ギリ猫②
+      if (giri2) {
+        const fx = RIGHT_X + SMALL_W + 4, fy = BODY_Y;
+        ctx.fillStyle = "white";
+        ctx.beginPath(); ctx.roundRect(fx, fy, SMALL_W, SMALL_H, 10); ctx.fill();
+        const s = Math.min(SMALL_W, SMALL_H) - 28;
+        drawCatOnCanvas(ctx, giri2, fx + SMALL_W/2 - s/2, fy + 4, s);
+        ctx.fillStyle = "#3a2e28"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("ギリ猫②", fx + SMALL_W/2, fy + SMALL_H - 6);
+      }
+
+      // 右下左：平均から遠い猫
+      if (myFar) {
+        const fx = RIGHT_X, fy = BODY_Y + SMALL_H + 8;
+        ctx.fillStyle = "white";
+        ctx.beginPath(); ctx.roundRect(fx, fy, SMALL_W, SMALL_H, 10); ctx.fill();
+        const s = Math.min(SMALL_W, SMALL_H) - 28;
+        drawCatOnCanvas(ctx, myFar, fx + SMALL_W/2 - s/2, fy + 4, s);
+        ctx.fillStyle = "#3a2e28"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("平均から遠い", fx + SMALL_W/2, fy + SMALL_H - 6);
+      }
+
+      // 右下右：票数テキスト
+      {
+        const fx = RIGHT_X + SMALL_W + 4, fy = BODY_Y + SMALL_H + 8;
+        ctx.fillStyle = "white";
+        ctx.beginPath(); ctx.roundRect(fx, fy, SMALL_W, SMALL_H, 10); ctx.fill();
+        ctx.fillStyle = "#3a2e28";
+        ctx.textAlign = "center";
+        ctx.font = "bold 28px sans-serif";
+        ctx.fillText(`${yesCount}票`, fx + SMALL_W/2, fy + SMALL_H/2 - 8);
+        if (yesCount > 10) {
+          ctx.font = "10px sans-serif";
+          ctx.fillStyle = "#7a6a5a";
+          ctx.fillText("たくさんの猫を", fx + SMALL_W/2, fy + SMALL_H/2 + 10);
+          ctx.fillText("許容してくれて", fx + SMALL_W/2, fy + SMALL_H/2 + 24);
+          ctx.fillText("ありがとう！", fx + SMALL_W/2, fy + SMALL_H/2 + 38);
+        } else {
+          ctx.font = "10px sans-serif";
+          ctx.fillStyle = "#b0a090";
+          ctx.fillText("許容した猫の数", fx + SMALL_W/2, fy + SMALL_H/2 + 14);
+        }
+      }
 
       // URL
       ctx.fillStyle = "#b0a090"; ctx.font = "10px sans-serif"; ctx.textAlign = "right";
-      ctx.fillText("kyoyouneko.vercel.app", W-10, H-8);
+      ctx.fillText("kyoyouneko.vercel.app", W-10, H-6);
 
       return canvas.toDataURL("image/png");
     }
@@ -478,6 +486,23 @@
               次のランダム猫を見る 🐱
             </button>
 
+            {/* 結果画像＋シェア（自分のYESが1票以上） */}
+            {myAvgNorm && (() => {
+              const dataUrl = generateResultDataURL(myAvgNorm, myFarNorm, giri1Norm, giri2Norm, myYesVotes.length);
+              return (
+                <div style={{marginBottom:14}}>
+                  <div style={{background:"white",borderRadius:16,padding:12,boxShadow:"0 2px 12px rgba(58,46,40,0.1)",marginBottom:10}}>
+                    <div style={{fontSize:11,color:"#9a8a7a",textAlign:"center",marginBottom:6}}>長押しで画像を保存できます</div>
+                    <img src={dataUrl} style={{width:"100%",borderRadius:8,display:"block"}} alt="許容猫 判定レポート"/>
+                  </div>
+                  <button onClick={handleShare}
+                    style={{width:"100%",padding:"13px",borderRadius:14,background:"#1a1a1a",color:"white",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:14}}>
+                    𝕏 これはネコだと思う
+                  </button>
+                </div>
+              );
+            })()}
+
             {/* レーダー（自分・みんな平均のみ） */}
             <div style={{background:"white",borderRadius:20,padding:"16px 12px 8px",boxShadow:"0 2px 16px rgba(58,46,40,0.08)",marginBottom:14}}>
               <div style={{fontSize:12,fontWeight:700,textAlign:"center",color:"#7a6a5a",marginBottom:8}}>猫パラメータ レーダー</div>
@@ -505,23 +530,6 @@
                 </div>
               </div>
             )}
-
-            {/* 結果画像＋シェア（自分のYESが1票以上） */}
-            {myAvgNorm && (() => {
-              const dataUrl = generateResultDataURL(myAvgNorm, myFarNorm, giri1Norm, giri2Norm, myAvgScores);
-              return (
-                <div style={{marginBottom:16}}>
-                  <div style={{background:"white",borderRadius:16,padding:12,boxShadow:"0 2px 12px rgba(58,46,40,0.1)",marginBottom:10}}>
-                    <div style={{fontSize:11,color:"#9a8a7a",textAlign:"center",marginBottom:6}}>長押しで画像を保存できます</div>
-                    <img src={dataUrl} style={{width:"100%",borderRadius:8,display:"block"}} alt="許容猫 判定レポート"/>
-                  </div>
-                  <button onClick={handleShare}
-                    style={{width:"100%",padding:"13px",borderRadius:14,background:"#1a1a1a",color:"white",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                    𝕏 これはネコだと思う
-                  </button>
-                </div>
-              );
-            })()}
 
             {!allAvgNorm && (
               <div style={{background:"white",borderRadius:20,padding:"28px 16px",boxShadow:"0 2px 16px rgba(58,46,40,0.08)",textAlign:"center",color:"#b0a090",fontSize:13}}>
