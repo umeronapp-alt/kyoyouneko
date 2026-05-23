@@ -3,40 +3,347 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>テスト</title>
+  <title>どこまでが猫ですか？</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
-<body>
+<body style="margin:0;padding:0;">
   <div id="root"></div>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyCO5gK_OTHnjCZ2JAG__AsH2ZlqcXKXIMI",
+      authDomain: "kyoyouneko-b42f5.firebaseapp.com",
+      projectId: "kyoyouneko-b42f5",
+      storageBucket: "kyoyouneko-b42f5.firebasestorage.app",
+      messagingSenderId: "674428072939",
+      appId: "1:674428072939:web:44a77bc5a4d5eef9b19fae",
+    });
+    const db = firebase.firestore();
+    async function loadVotes() {
+      try {
+        const snap = await db.collection("votes").get();
+        return snap.docs.map(d => d.data());
+      } catch(e) { console.error(e); return []; }
+    }
+    async function saveVote(entry) {
+      try { await db.collection("votes").add(entry); }
+      catch(e) { console.error(e); }
+    }
+  </script>
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
-    function App() {
+
+    const PARAMS = {
+      outline_ratio:  { axis: "輪郭", label: "縦横比" },
+      ear_size:       { axis: "耳",   label: "耳の大きさ" },
+      ear_pointy:     { axis: "耳",   label: "耳の尖り" },
+      ear_position:   { axis: "耳",   label: "耳の位置" },
+      eye_ratio:      { axis: "目",   label: "目の縦横比" },
+      eye_angle:      { axis: "目",   label: "目の角度" },
+      nose_size:      { axis: "鼻",   label: "鼻の大きさ" },
+      nose_angle:     { axis: "鼻",   label: "鼻の角度" },
+      whisker_count:  { axis: "ヒゲ", label: "ヒゲの本数" },
+      whisker_pos:    { axis: "ヒゲ", label: "ヒゲの位置" },
+      mouth_size:     { axis: "輪郭", label: "口の大きさ" },
+    };
+    const PARAM_KEYS = Object.keys(PARAMS);
+    const AXES = ["輪郭", "耳", "目", "鼻", "ヒゲ"];
+    const YES_LIMIT = 5;
+
+    function randomParams() {
+      const p = {};
+      PARAM_KEYS.forEach(k => { p[k] = Math.floor(Math.random() * 21); });
+      return p;
+    }
+    function normalize(params) {
+      const n = {};
+      PARAM_KEYS.forEach(k => { n[k] = params[k] / 20; });
+      return n;
+    }
+    function paramsKey(params) { return PARAM_KEYS.map(k => params[k]).join("-"); }
+
+    function calcAxisScores(normParams) {
+      const sums = {}, counts = {};
+      AXES.forEach(a => { sums[a] = 0; counts[a] = 0; });
+      PARAM_KEYS.forEach(k => { const ax = PARAMS[k].axis; sums[ax] += normParams[k]; counts[ax]++; });
+      const result = {};
+      AXES.forEach(a => { result[a] = Math.round((sums[a] / counts[a]) * 100); });
+      return result;
+    }
+    function calcAvgNormParams(yesVotes) {
+      if (!yesVotes.length) return null;
+      const sum = {};
+      PARAM_KEYS.forEach(k => { sum[k] = 0; });
+      yesVotes.forEach(v => { PARAM_KEYS.forEach(k => { sum[k] += v.params[k]; }); });
+      const avg = {};
+      PARAM_KEYS.forEach(k => { avg[k] = sum[k] / yesVotes.length / 20; });
+      return avg;
+    }
+    function calcFarthestNorm(avgNorm) {
+      if (!avgNorm) return null;
+      const far = {};
+      PARAM_KEYS.forEach(k => { far[k] = avgNorm[k] >= 0.5 ? 0 : 1; });
+      return far;
+    }
+
+    // ============================================================
+    // SVG 猫顔
+    // ============================================================
+    function CatFace({ norm, size = 200 }) {
+      const W = size, H = size, cx = size / 2, cy = size * 0.55;
+      const scale = size / 200;
+      const rx = (40 + (1 - norm.outline_ratio) * 20) * scale;
+      const ry = (38 + norm.outline_ratio * 22) * scale;
+      const earSize = (16 + norm.ear_size * 22) * scale;
+      const earPointy = norm.ear_pointy;
+      const earAngleDeg = 90 - norm.ear_position * 52;
+      const earAngleRad = (earAngleDeg * Math.PI) / 180;
+      function earCenter(sign) {
+        const ang = sign === 1 ? earAngleRad : Math.PI - earAngleRad;
+        return { x: cx + rx * Math.cos(ang), y: cy - ry * Math.sin(ang) };
+      }
+      function earOutDir(sign) {
+        const ang = sign === 1 ? earAngleRad : Math.PI - earAngleRad;
+        return { dx: Math.cos(ang), dy: -Math.sin(ang) };
+      }
+      function earPath(sign) {
+        const ec = earCenter(sign), dir = earOutDir(sign);
+        const perp = { dx: -dir.dy * sign, dy: dir.dx * sign };
+        const half = earSize * 0.5, tipDist = earSize * (0.7 + earPointy * 0.7);
+        const bx1 = ec.x + perp.dx * half, by1 = ec.y + perp.dy * half;
+        const bx2 = ec.x - perp.dx * half, by2 = ec.y - perp.dy * half;
+        const tipX = ec.x + dir.dx * tipDist, tipY = ec.y + dir.dy * tipDist;
+        if (earPointy < 0.05) return `M ${bx1} ${by1} A ${half} ${half} 0 0 ${sign === 1 ? 0 : 1} ${bx2} ${by2} Z`;
+        if (earPointy < 0.5) return `M ${bx1} ${by1} Q ${tipX} ${tipY} ${bx2} ${by2} Z`;
+        return `M ${bx1} ${by1} L ${tipX} ${tipY} L ${bx2} ${by2} Z`;
+      }
+      const eyeDot = 1.5 * scale, eyeLineLen = 7 * scale;
+      const eyeY = cy - ry * 0.22, eyeX = rx * 0.44;
+      const eyeHalf = norm.eye_ratio < 0.5
+        ? { dx: 0, dy: eyeLineLen * (1 - norm.eye_ratio * 2) }
+        : { dx: eyeLineLen * (norm.eye_ratio - 0.5) * 2, dy: 0 };
+      const eyeStrokeW = Math.max(eyeDot * 2, 3 * scale);
+      const noseSize = norm.nose_size * 10 * scale;
+      const noseY = cy + ry * 0.15;
+      const mouthSize = norm.mouth_size * (noseY - eyeY) * 0.85;
+      const wCount = Math.round(norm.whisker_count * 15);
+      const wBaseLen = 22 * scale, MAX_PER_LAYER = 5, wSpacing = 8 * scale;
+      const wStartX = norm.whisker_pos * rx;
+      const whiskers = [];
+      for (let i = 0; i < wCount; i++) {
+        const layer = Math.floor(i / MAX_PER_LAYER);
+        const idxInLayer = i % MAX_PER_LAYER;
+        const countInLayer = Math.min(wCount - layer * MAX_PER_LAYER, MAX_PER_LAYER);
+        const wLen = wBaseLen * (1 + layer * 0.5);
+        const startX = wStartX + layer * wBaseLen;
+        const wy = noseY - (countInLayer - 1) * wSpacing / 2 + idxInLayer * wSpacing;
+        const spread = (idxInLayer - (countInLayer - 1) / 2) * 0.15;
+        const ex = wLen * Math.cos(spread), ey = wLen * Math.sin(spread) * 0.4;
+        whiskers.push(
+          <line key={`r${i}`} x1={cx+startX} y1={wy} x2={cx+startX+ex} y2={wy+ey} stroke="#f0deca" strokeWidth={0.9*scale} strokeLinecap="round"/>,
+          <line key={`l${i}`} x1={cx-startX} y1={wy} x2={cx-startX-ex} y2={wy+ey} stroke="#f0deca" strokeWidth={0.9*scale} strokeLinecap="round"/>
+        );
+      }
+      return (
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+          <path d={earPath(1)} fill="#f0deca" stroke="none"/>
+          <path d={earPath(-1)} fill="#f0deca" stroke="none"/>
+          <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="#fef8f0" stroke="none"/>
+          <g transform={`rotate(${norm.eye_angle*360},${cx+eyeX},${eyeY})`}>
+            <line x1={cx+eyeX-eyeHalf.dx} y1={eyeY-eyeHalf.dy} x2={cx+eyeX+eyeHalf.dx} y2={eyeY+eyeHalf.dy} stroke="#1a1a1a" strokeWidth={eyeStrokeW} strokeLinecap="round"/>
+          </g>
+          <g transform={`rotate(${norm.eye_angle*360},${cx-eyeX},${eyeY})`}>
+            <line x1={cx-eyeX-eyeHalf.dx} y1={eyeY-eyeHalf.dy} x2={cx-eyeX+eyeHalf.dx} y2={eyeY+eyeHalf.dy} stroke="#1a1a1a" strokeWidth={eyeStrokeW} strokeLinecap="round"/>
+          </g>
+          {noseSize > 0.5 && (
+            <g transform={`rotate(${norm.nose_angle*360},${cx},${noseY})`}>
+              <polygon points={`${cx},${noseY-noseSize*0.5} ${cx-noseSize},${noseY+noseSize*0.5} ${cx+noseSize},${noseY+noseSize*0.5}`} fill="#e899a0" stroke="none"/>
+            </g>
+          )}
+          {mouthSize > 0.5 && (<>
+            <path d={`M ${cx} ${noseY+noseSize*0.5} Q ${cx-mouthSize*0.6} ${noseY+noseSize*0.5+mouthSize*0.7} ${cx-mouthSize} ${noseY+noseSize*0.5+mouthSize*0.4}`} fill="none" stroke="#666" strokeWidth={1.4*scale} strokeLinecap="round"/>
+            <path d={`M ${cx} ${noseY+noseSize*0.5} Q ${cx+mouthSize*0.6} ${noseY+noseSize*0.5+mouthSize*0.7} ${cx+mouthSize} ${noseY+noseSize*0.5+mouthSize*0.4}`} fill="none" stroke="#666" strokeWidth={1.4*scale} strokeLinecap="round"/>
+          </>)}
+          {whiskers}
+        </svg>
+      );
+    }
+
+    // ============================================================
+    // Chart.jsレーダー
+    // ============================================================
+    function CatRadar({ current, myAvg, allAvg }) {
       const canvasRef = useRef(null);
+      const chartRef = useRef(null);
+
       useEffect(() => {
-        const ctx = canvasRef.current.getContext('2d');
-        new Chart(ctx, {
-          type: 'radar',
-          data: {
-            labels: ['輪郭', '耳', '目', '鼻', 'ヒゲ'],
-            datasets: [{
-              label: 'テスト',
-              data: [80, 60, 40, 70, 50],
-              borderColor: '#e8734a',
-              backgroundColor: 'rgba(232,115,74,0.2)',
-            }]
+        if (!canvasRef.current) return;
+        if (chartRef.current) chartRef.current.destroy();
+        const datasets = [
+          { label: "今回", data: AXES.map(a => current[a]), borderColor: "#e8734a", backgroundColor: "rgba(232,115,74,0.15)", pointRadius: 3 },
+        ];
+        if (myAvg) datasets.push({ label: "自分YES平均", data: AXES.map(a => myAvg[a]), borderColor: "#4a90e8", backgroundColor: "rgba(74,144,232,0.1)", borderDash: [4,2], pointRadius: 2 });
+        if (allAvg) datasets.push({ label: "みんなYES平均", data: AXES.map(a => allAvg[a]), borderColor: "#52b06a", backgroundColor: "rgba(82,176,106,0.1)", borderDash: [2,3], pointRadius: 2 });
+        chartRef.current = new Chart(canvasRef.current, {
+          type: "radar",
+          data: { labels: AXES, datasets },
+          options: {
+            scales: { r: { min: 0, max: 100, ticks: { display: false }, pointLabels: { font: { size: 12 }, color: "#7a6a5a" }, grid: { color: "#d4c5b5" } } },
+            plugins: { legend: { labels: { font: { size: 11 }, boxWidth: 20 } } },
+            animation: false,
           }
         });
+      }, [current, myAvg, allAvg]);
+
+      return <canvas ref={canvasRef} style={{maxHeight: 240}} />;
+    }
+
+    // ============================================================
+    // メイン
+    // ============================================================
+    function App() {
+      const [params, setParams] = useState(() => randomParams());
+      const votesRef = useRef([]);
+      const [votesSnapshot, setVotesSnapshot] = useState([]);
+      const [myYesVotes, setMyYesVotes] = useState([]);
+      const [phase, setPhase] = useState("idle");
+      const [lastAnswer, setLastAnswer] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        loadVotes().then(v => {
+          votesRef.current = v;
+          setVotesSnapshot([...v]);
+          setLoading(false);
+        });
       }, []);
+
+      const norm = normalize(params);
+      const key = paramsKey(params);
+      const hasVoted = votesRef.current.some(v => v.key === key);
+      const yesCountForThis = votesRef.current.filter(v => v.key === key && v.isYes).length;
+      const yesDisabled = hasVoted || yesCountForThis >= YES_LIMIT;
+      const noDisabled = hasVoted;
+
+      async function handleVote(isYes) {
+        if (votesRef.current.some(v => v.key === key)) return;
+        if (isYes && votesRef.current.filter(v => v.key === key && v.isYes).length >= YES_LIMIT) return;
+        const entry = { key, params: { ...params }, isYes, ts: Date.now() };
+        votesRef.current = [...votesRef.current, entry];
+        setVotesSnapshot([...votesRef.current]);
+        if (isYes) setMyYesVotes(prev => [...prev, normalize(params)]);
+        setLastAnswer(isYes);
+        setPhase("voted");
+        await saveVote(entry);
+      }
+
+      function handleNext() { setParams(randomParams()); setPhase("idle"); setLastAnswer(null); }
+
+      const allVotes = votesSnapshot;
+      const totalCount = allVotes.length;
+      const yesCount = allVotes.filter(v => v.isYes).length;
+      const currentScores = calcAxisScores(norm);
+      const myAvgNorm = myYesVotes.length ? (() => {
+        const avg = {};
+        PARAM_KEYS.forEach(k => { avg[k] = myYesVotes.reduce((s, n) => s + n[k], 0) / myYesVotes.length; });
+        return avg;
+      })() : null;
+      const allAvgNorm = calcAvgNormParams(allVotes.filter(v => v.isYes));
+      const myAvgScores = myAvgNorm ? calcAxisScores(myAvgNorm) : null;
+      const allAvgScores = allAvgNorm ? calcAxisScores(allAvgNorm) : null;
+
+      const s = {
+        wrap: {minHeight:"100vh",background:"#faf5ef",fontFamily:"'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif",color:"#3a2e28",display:"flex",flexDirection:"column",alignItems:"center",paddingBottom:48},
+        header: {width:"100%",background:"#3a2e28",color:"#faf5ef",padding:"16px 24px",textAlign:"center",marginBottom:20,boxShadow:"0 2px 12px rgba(0,0,0,0.15)"},
+        inner: {width:"100%",maxWidth:460,padding:"0 14px"},
+        card: {background:"white",borderRadius:20,padding:"20px 0 12px",display:"flex",flexDirection:"column",alignItems:"center",boxShadow:"0 2px 16px rgba(58,46,40,0.09)",marginBottom:14,position:"relative"},
+        paramCard: {background:"white",borderRadius:14,padding:"12px 16px",marginBottom:14,boxShadow:"0 1px 8px rgba(58,46,40,0.06)",fontSize:11},
+        btnRow: {display:"flex",gap:10,marginBottom:10},
+      };
+
       return (
-        <div>
-          <h1>レーダーテスト</h1>
-          <canvas ref={canvasRef}></canvas>
+        <div style={s.wrap}>
+          <div style={s.header}>
+            <div style={{fontSize:20,fontWeight:700,letterSpacing:"0.05em"}}>どこまでが猫ですか？</div>
+            <div style={{fontSize:11,opacity:0.55,marginTop:3}}>累計 {totalCount} 票 ／ YES {yesCount} 票</div>
+          </div>
+          <div style={s.inner}>
+            <div style={s.card}>
+              <CatFace norm={norm} size={200}/>
+              {phase==="voted" && <div style={{position:"absolute",top:14,right:16,fontSize:30}}>{lastAnswer?"😺":"🙅"}</div>}
+            </div>
+
+            <div style={s.paramCard}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px 14px"}}>
+                {PARAM_KEYS.map(k=>(
+                  <div key={k} style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{color:"#9a8a7a",whiteSpace:"nowrap",width:68}}>{PARAMS[k].label}</span>
+                    <div style={{flex:1,height:4,background:"#ede8e2",borderRadius:2,overflow:"hidden"}}>
+                      <div style={{width:`${norm[k]*100}%`,height:"100%",background:"#e8734a",borderRadius:2}}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={s.btnRow}>
+              <button onClick={()=>handleVote(true)} disabled={yesDisabled||loading}
+                style={{flex:1,padding:"14px",borderRadius:14,border:`2px solid ${yesDisabled?"#ddd":"#52b06a"}`,background:"white",color:yesDisabled?"#bbb":"#52b06a",fontSize:17,fontWeight:700,cursor:yesDisabled?"not-allowed":"pointer",fontFamily:"inherit"}}>
+                😺 猫です
+              </button>
+              <button onClick={()=>handleVote(false)} disabled={noDisabled||loading}
+                style={{flex:1,padding:"14px",borderRadius:14,border:`2px solid ${noDisabled?"#ddd":"#e8734a"}`,background:"white",color:noDisabled?"#bbb":"#e8734a",fontSize:17,fontWeight:700,cursor:noDisabled?"not-allowed":"pointer",fontFamily:"inherit"}}>
+                🙅 猫じゃない
+              </button>
+            </div>
+
+            <button onClick={handleNext}
+              style={{width:"100%",padding:"13px",borderRadius:14,background:phase==="voted"?"#3a2e28":"white",color:phase==="voted"?"#faf5ef":"#9a8a7a",border:`2px solid ${phase==="voted"?"#3a2e28":"#d4c5b5"}`,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>
+              次のランダム猫を見る 🐱
+            </button>
+
+            <div style={{background:"white",borderRadius:20,padding:"16px 12px 8px",boxShadow:"0 2px 16px rgba(58,46,40,0.08)",marginBottom:14}}>
+              <div style={{fontSize:12,fontWeight:700,textAlign:"center",color:"#7a6a5a",marginBottom:8}}>猫パラメータ レーダー</div>
+              <CatRadar current={currentScores} myAvg={myAvgScores} allAvg={allAvgScores}/>
+              <div style={{fontSize:10,color:"#b0a090",textAlign:"center",marginTop:4}}>自分YES: {myYesVotes.length}票 ／ みんなYES: {yesCount}/{totalCount}票</div>
+            </div>
+
+            {(allAvgNorm||myAvgNorm) ? (()=>{
+              const allFar=calcFarthestNorm(allAvgNorm), myFar=calcFarthestNorm(myAvgNorm);
+              const faces=[
+                {label:"みんなの平均",norm:allAvgNorm,sub:`${yesCount}票から`},
+                {label:"みんなの平均から遠い",norm:allFar,sub:"各パラメータの逆端"},
+                {label:"自分の平均",norm:myAvgNorm,sub:`${myYesVotes.length}票から`},
+                {label:"自分の平均から遠い",norm:myFar,sub:"各パラメータの逆端"},
+              ];
+              return (
+                <div style={{background:"white",borderRadius:20,padding:"16px 10px 12px",boxShadow:"0 2px 16px rgba(58,46,40,0.08)"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#7a6a5a",textAlign:"center",marginBottom:12}}>猫の顔いろいろ</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    {faces.map(({label,norm,sub})=>(
+                      <div key={label} style={{textAlign:"center"}}>
+                        <div style={{fontSize:10,fontWeight:700,color:"#7a6a5a",marginBottom:2}}>{label}</div>
+                        <div style={{fontSize:9,color:"#b0a090",marginBottom:4}}>{sub}</div>
+                        {norm?<CatFace norm={norm} size={140}/>:<div style={{height:140,display:"flex",alignItems:"center",justifyContent:"center",color:"#ccc",fontSize:11}}>投票待ち</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })() : (
+              <div style={{background:"white",borderRadius:20,padding:"28px 16px",boxShadow:"0 2px 16px rgba(58,46,40,0.08)",textAlign:"center",color:"#b0a090",fontSize:13}}>
+                😺 投票が集まると平均猫が現れます
+              </div>
+            )}
+          </div>
         </div>
       );
     }
+
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App/>);
   </script>
