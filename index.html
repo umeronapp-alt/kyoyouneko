@@ -40,6 +40,7 @@
     const PARAMS = {
       outline_ratio:  { axis: "輪郭", label: "縦横比" },
       ear_size:       { axis: "耳",   label: "耳の大きさ" },
+      ear_length:     { axis: "耳",   label: "耳の長さ" },
       ear_pointy:     { axis: "耳",   label: "耳の尖り" },
       ear_position:   { axis: "耳",   label: "耳の位置" },
       eye_ratio:      { axis: "目",   label: "目の縦横比" },
@@ -106,17 +107,18 @@
       const scale = size / 200;
       const rx = (40 + (1 - norm.outline_ratio) * 20) * scale;
       const ry = (38 + norm.outline_ratio * 22) * scale;
-      const earSize = (16 + norm.ear_size * 22) * scale;
+      const earWidth = (10 + norm.ear_size * 20) * scale;
+      const earLen = (16 + norm.ear_length * 80) * scale;
       const earPointy = norm.ear_pointy;
-      const earAngleDeg = 90 - norm.ear_position * 52;
+      const earAngleDeg = 90 - norm.ear_position * 90;
       const earAngleRad = (earAngleDeg * Math.PI) / 180;
       function getEarPoints(sign) {
         const ang = sign === 1 ? earAngleRad : Math.PI - earAngleRad;
         const ec = { x: cx + rx * Math.cos(ang), y: cy - ry * Math.sin(ang) };
         const dir = { dx: Math.cos(ang), dy: -Math.sin(ang) };
         const perp = { dx: -dir.dy * sign, dy: dir.dx * sign };
-        const half = earSize * 0.5, tipDist = earSize * (0.7 + earPointy * 0.7);
-        return { b1:{x:ec.x+perp.dx*half,y:ec.y+perp.dy*half}, b2:{x:ec.x-perp.dx*half,y:ec.y-perp.dy*half}, tip:{x:ec.x+dir.dx*tipDist,y:ec.y+dir.dy*tipDist}, half, ec };
+        const half = earWidth * 0.5;
+        return { b1:{x:ec.x+perp.dx*half,y:ec.y+perp.dy*half}, b2:{x:ec.x-perp.dx*half,y:ec.y-perp.dy*half}, tip:{x:ec.x+dir.dx*earLen,y:ec.y+dir.dy*earLen}, half, ec };
       }
       [1,-1].forEach(sign => {
         const {b1,b2,tip,half,ec} = getEarPoints(sign);
@@ -125,8 +127,10 @@
         else if (earPointy<0.5) ctx.quadraticCurveTo(tip.x,tip.y,b2.x,b2.y);
         else { ctx.lineTo(tip.x,tip.y); ctx.lineTo(b2.x,b2.y); }
         ctx.closePath(); ctx.fillStyle="#f0deca"; ctx.fill();
+        ctx.strokeStyle="#d4b89a"; ctx.lineWidth=1.2*scale; ctx.lineJoin="round"; ctx.stroke();
       });
       ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.fillStyle="#fef8f0"; ctx.fill();
+      ctx.strokeStyle="#d4b89a"; ctx.lineWidth=1.5*scale; ctx.stroke();
       const eyeDot=1.5*scale, eyeLineLen=7*scale;
       const eyeY=cy-ry*0.22, eyeX=rx*0.44;
       const eyeHalf = norm.eye_ratio<0.5 ? {dx:0,dy:eyeLineLen*(1-norm.eye_ratio*2)} : {dx:eyeLineLen*(norm.eye_ratio-0.5)*2,dy:0};
@@ -138,11 +142,12 @@
         ctx.beginPath(); ctx.moveTo(-eyeHalf.dx,-eyeHalf.dy); ctx.lineTo(eyeHalf.dx,eyeHalf.dy);
         ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=eyeStrokeW; ctx.lineCap="round"; ctx.stroke(); ctx.restore();
       });
-      const noseSize=norm.nose_size*10*scale, noseY=cy+ry*0.15;
+      const noseSize=norm.nose_size*22*scale, noseY=cy+ry*0.15;
       if (noseSize>0.5) {
         ctx.save(); ctx.translate(cx,noseY); ctx.rotate(norm.nose_angle*Math.PI*2);
         ctx.beginPath(); ctx.moveTo(0,-noseSize*0.5); ctx.lineTo(-noseSize,noseSize*0.5); ctx.lineTo(noseSize,noseSize*0.5);
-        ctx.closePath(); ctx.fillStyle="#e899a0"; ctx.fill(); ctx.restore();
+        ctx.closePath(); ctx.fillStyle="#e899a0"; ctx.fill();
+        ctx.strokeStyle="#c06070"; ctx.lineWidth=0.8*scale; ctx.stroke(); ctx.restore();
       }
       const mouthSize=norm.mouth_size*(noseY-(cy-ry*0.22))*0.85;
       if (mouthSize>0.5) {
@@ -175,9 +180,10 @@
       const scale = size / 200;
       const rx = (40 + (1 - norm.outline_ratio) * 20) * scale;
       const ry = (38 + norm.outline_ratio * 22) * scale;
-      const earSize = (16 + norm.ear_size * 22) * scale;
+      const earWidth = (10 + norm.ear_size * 20) * scale;  // 幅
+      const earLen = (16 + norm.ear_length * 80) * scale;  // 長さ（ウサギ耳まで）
       const earPointy = norm.ear_pointy;
-      const earAngleDeg = 90 - norm.ear_position * 52;
+      const earAngleDeg = 90 - norm.ear_position * 90;     // 0°真横〜90°脳天
       const earAngleRad = (earAngleDeg * Math.PI) / 180;
       function earCenter(sign) {
         const ang = sign === 1 ? earAngleRad : Math.PI - earAngleRad;
@@ -190,7 +196,8 @@
       function earPath(sign) {
         const ec = earCenter(sign), dir = earOutDir(sign);
         const perp = { dx: -dir.dy * sign, dy: dir.dx * sign };
-        const half = earSize * 0.5, tipDist = earSize * (0.7 + earPointy * 0.7);
+        const half = earWidth * 0.5;
+        const tipDist = earLen;
         const bx1 = ec.x + perp.dx * half, by1 = ec.y + perp.dy * half;
         const bx2 = ec.x - perp.dx * half, by2 = ec.y - perp.dy * half;
         const tipX = ec.x + dir.dx * tipDist, tipY = ec.y + dir.dy * tipDist;
@@ -204,7 +211,7 @@
         ? { dx: 0, dy: eyeLineLen * (1 - norm.eye_ratio * 2) }
         : { dx: eyeLineLen * (norm.eye_ratio - 0.5) * 2, dy: 0 };
       const eyeStrokeW = Math.max(eyeDot * 2, 3 * scale);
-      const noseSize = norm.nose_size * 10 * scale;
+      const noseSize = norm.nose_size * 22 * scale; // コアラサイズまで
       const noseY = cy + ry * 0.15;
       const mouthSize = norm.mouth_size * (noseY - eyeY) * 0.85;
       const wCount = Math.round(norm.whisker_count * 15);
@@ -227,9 +234,9 @@
       }
       return (
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-          <path d={earPath(1)} fill="#f0deca" stroke="none"/>
-          <path d={earPath(-1)} fill="#f0deca" stroke="none"/>
-          <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="#fef8f0" stroke="none"/>
+          <path d={earPath(1)} fill="#f0deca" stroke="#d4b89a" strokeWidth={1.2*scale} strokeLinejoin="round"/>
+          <path d={earPath(-1)} fill="#f0deca" stroke="#d4b89a" strokeWidth={1.2*scale} strokeLinejoin="round"/>
+          <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="#fef8f0" stroke="#d4b89a" strokeWidth={1.5*scale}/>
           <g transform={`rotate(${norm.eye_angle*360},${cx+eyeX},${eyeY})`}>
             <line x1={cx+eyeX-eyeHalf.dx} y1={eyeY-eyeHalf.dy} x2={cx+eyeX+eyeHalf.dx} y2={eyeY+eyeHalf.dy} stroke="#1a1a1a" strokeWidth={eyeStrokeW} strokeLinecap="round"/>
           </g>
@@ -238,7 +245,7 @@
           </g>
           {noseSize > 0.5 && (
             <g transform={`rotate(${norm.nose_angle*360},${cx},${noseY})`}>
-              <polygon points={`${cx},${noseY-noseSize*0.5} ${cx-noseSize},${noseY+noseSize*0.5} ${cx+noseSize},${noseY+noseSize*0.5}`} fill="#e899a0" stroke="none"/>
+              <polygon points={`${cx},${noseY-noseSize*0.5} ${cx-noseSize},${noseY+noseSize*0.5} ${cx+noseSize},${noseY+noseSize*0.5}`} fill="#e899a0" stroke="#c06070" strokeWidth={0.8*scale}/>
             </g>
           )}
           {mouthSize > 0.5 && (<>
