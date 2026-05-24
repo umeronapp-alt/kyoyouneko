@@ -333,7 +333,7 @@
       ctx.fillText("許容猫", 16, 28);
       ctx.font = "13px sans-serif";
       ctx.fillStyle = "rgba(255,255,255,0.55)";
-      ctx.fillText("判定レポート", 110, 28);
+      ctx.fillText("判定レポート", 88, 28);
 
       const PAD = 8;
       const BODY_Y = HEADER_H + PAD;
@@ -354,37 +354,46 @@
         const catY = BODY_Y + 8;
         drawCatOnCanvas(ctx, myAvg, catX, catY, catSize);
 
-        // 文字を猫の直下から順に
-        let ty = BODY_Y + catSize + 16;
+        // 文字エリアの高さを計算して均等配置
+        const textAreaTop = BODY_Y + catSize + 10;
+        const textAreaH = BODY_H - catSize - 14;
+        const LCX = PAD + LEFT_W / 2;
 
         // 猫すぎる
         ctx.fillStyle = "#3a2e28";
-        ctx.font = "bold 13px sans-serif";
-        ctx.fillText("猫すぎる", PAD + LEFT_W/2, ty);
-        ty += 15;
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("猫すぎる", LCX, textAreaTop + 12);
 
-        // 許容した猫
-        ctx.font = "11px sans-serif";
-        ctx.fillStyle = "#7a6a5a";
-        ctx.fillText("許容した猫", PAD + LEFT_W/2, ty);
-        ty += 18;
+        // 区切り線
+        ctx.strokeStyle = "#ede8e2";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(PAD + 12, textAreaTop + 18);
+        ctx.lineTo(PAD + LEFT_W - 12, textAreaTop + 18);
+        ctx.stroke();
 
-        // 匹数
-        ctx.font = "bold 20px sans-serif";
+        // 「許容した猫」ラベル
+        ctx.font = "10px sans-serif";
+        ctx.fillStyle = "#9a8a7a";
+        ctx.fillText("許容した猫", LCX, textAreaTop + 31);
+
+        // 匹数（大）+ /xx（小）を横並び
+        ctx.font = "bold 22px sans-serif";
         ctx.fillStyle = "#3a2e28";
         const countText = `${yesCount}匹`;
         const countW = ctx.measureText(countText).width;
-        ctx.fillText(countText, PAD + LEFT_W/2 - 10, ty);
-        ctx.font = "11px sans-serif";
+        const numX = LCX - countW / 2;
+        ctx.fillText(countText, numX, textAreaTop + 56);
+        ctx.font = "10px sans-serif";
         ctx.fillStyle = "#9a8a7a";
-        ctx.fillText(`/${totalCount}`, PAD + LEFT_W/2 + countW/2, ty);
-        ty += 15;
+        ctx.fillText(`/${totalCount}`, numX + countW + 2, textAreaTop + 56);
 
         // 感謝メッセージ（30以上）
         if (yesCount >= 30) {
-          ctx.font = "9px sans-serif";
+          ctx.font = "8.5px sans-serif";
           ctx.fillStyle = "#e8734a";
-          ctx.fillText("たくさんの猫を許容してくれてありがとう！", PAD + LEFT_W/2, ty);
+          ctx.fillText("たくさんの猫を許容してくれてありがとう！", LCX, textAreaTop + 72);
         }
       }
 
