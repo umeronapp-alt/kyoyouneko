@@ -354,17 +354,20 @@
         const catY = BODY_Y + 8;
         drawCatOnCanvas(ctx, myAvg, catX, catY, catSize);
 
-        // 文字を下から積み上げで配置
-        const bottomY = BODY_Y + BODY_H - 6;
-        let ty = bottomY;
+        // 文字を猫の直下から順に
+        let ty = BODY_Y + catSize + 16;
 
-        // 感謝メッセージ（30以上）
-        if (yesCount >= 30) {
-          ctx.font = "9px sans-serif";
-          ctx.fillStyle = "#e8734a";
-          ctx.fillText("たくさんの猫を許容してくれてありがとう！", PAD + LEFT_W/2, ty);
-          ty -= 16;
-        }
+        // 猫すぎる
+        ctx.fillStyle = "#3a2e28";
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillText("猫すぎる", PAD + LEFT_W/2, ty);
+        ty += 15;
+
+        // 許容した猫
+        ctx.font = "11px sans-serif";
+        ctx.fillStyle = "#7a6a5a";
+        ctx.fillText("許容した猫", PAD + LEFT_W/2, ty);
+        ty += 18;
 
         // 匹数
         ctx.font = "bold 20px sans-serif";
@@ -375,18 +378,14 @@
         ctx.font = "11px sans-serif";
         ctx.fillStyle = "#9a8a7a";
         ctx.fillText(`/${totalCount}`, PAD + LEFT_W/2 + countW/2, ty);
-        ty -= 16;
+        ty += 15;
 
-        // 許容した猫
-        ctx.font = "11px sans-serif";
-        ctx.fillStyle = "#7a6a5a";
-        ctx.fillText("許容した猫", PAD + LEFT_W/2, ty);
-        ty -= 16;
-
-        // 猫すぎる
-        ctx.fillStyle = "#3a2e28";
-        ctx.font = "bold 13px sans-serif";
-        ctx.fillText("猫すぎる", PAD + LEFT_W/2, ty);
+        // 感謝メッセージ（30以上）
+        if (yesCount >= 30) {
+          ctx.font = "9px sans-serif";
+          ctx.fillStyle = "#e8734a";
+          ctx.fillText("たくさんの猫を許容してくれてありがとう！", PAD + LEFT_W/2, ty);
+        }
       }
 
       // 右3段
@@ -401,16 +400,17 @@
         const fy = BODY_Y + i * (ROW_H + 4);
         ctx.fillStyle = "white";
         ctx.beginPath(); ctx.roundRect(RIGHT_X, fy, RIGHT_W, ROW_H, 10); ctx.fill();
+        if (norm) {
+          const s = Math.floor((ROW_H - LABEL_H - 4) * 1.155);
+          // ラベルのすぐ上に猫を配置
+          const labelY = fy + ROW_H - 4;
+          const catY = labelY - s - 2;
+          drawCatOnCanvas(ctx, norm, RIGHT_X + RIGHT_W/2 - s/2, catY, s);
+        }
         ctx.fillStyle = "#3a2e28";
         ctx.font = "bold 9px sans-serif";
         ctx.textAlign = "center";
         ctx.fillText(label, RIGHT_X + RIGHT_W/2, fy + ROW_H - 4);
-        if (norm) {
-          const s = Math.floor((ROW_H - LABEL_H - 4) * 1.155);
-          // ラベルの1行分上に猫を配置
-          const catY = fy + ROW_H - LABEL_H - 14 - s;
-          drawCatOnCanvas(ctx, norm, RIGHT_X + RIGHT_W/2 - s/2, catY, s);
-        }
       });
 
       // URL（右上）
