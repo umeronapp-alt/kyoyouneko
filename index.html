@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
@@ -354,23 +354,21 @@
         const catY = BODY_Y + 8;
         drawCatOnCanvas(ctx, myAvg, catX, catY, catSize);
 
-        // 文字エリアの高さを計算して均等配置
-        const textAreaTop = BODY_Y + catSize + 10;
-        const textAreaH = BODY_H - catSize - 14;
+        // 文字を下から逆算して配置（カード下辺の内側に収まるように）
         const LCX = PAD + LEFT_W / 2;
+        const cardBottom = BODY_Y + BODY_H - 10; // カード下辺から10px内側
+        let ty = cardBottom;
 
-        // 猫すぎる
-        ctx.fillStyle = "#3a2e28";
-        ctx.font = "bold 12px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("猫すぎる", LCX, textAreaTop + 10);
+        // 感謝メッセージ（30以上）- 一番下
+        if (yesCount >= 30) {
+          ctx.font = "8px sans-serif";
+          ctx.fillStyle = "#e8734a";
+          ctx.textAlign = "center";
+          ctx.fillText("たくさんの猫を許容してくれてありがとう！", LCX, ty);
+          ty -= 16;
+        }
 
-        // 「許容した猫」ラベル
-        ctx.font = "10px sans-serif";
-        ctx.fillStyle = "#9a8a7a";
-        ctx.fillText("許容した猫", LCX, textAreaTop + 24);
-
-        // 匹数（大）をセンター、/xx（小）をその右横に
+        // xx匹 /xx
         ctx.font = "bold 22px sans-serif";
         ctx.fillStyle = "#3a2e28";
         const countText = `${yesCount}匹`;
@@ -378,25 +376,29 @@
         ctx.font = "10px sans-serif";
         const slashText = `/${totalCount}`;
         const slashW = ctx.measureText(slashText).width;
-        // xx匹をセンター、/xxを右隣（間隔は/xxのフォントサイズ基準=約4px）
         const gap = 4;
         const blockW = countW + gap + slashW;
         const blockX = LCX - blockW / 2;
         ctx.font = "bold 22px sans-serif";
         ctx.fillStyle = "#3a2e28";
         ctx.textAlign = "left";
-        ctx.fillText(countText, blockX, textAreaTop + 46);
+        ctx.fillText(countText, blockX, ty);
         ctx.font = "10px sans-serif";
         ctx.fillStyle = "#9a8a7a";
-        ctx.fillText(slashText, blockX + countW + gap, textAreaTop + 46);
+        ctx.fillText(slashText, blockX + countW + gap, ty);
         ctx.textAlign = "center";
+        ty -= 16;
 
-        // 感謝メッセージ（30以上）- 枠内下部に収める
-        if (yesCount >= 30) {
-          ctx.font = "8px sans-serif";
-          ctx.fillStyle = "#e8734a";
-          ctx.fillText("たくさんの猫を許容してくれてありがとう！", LCX, textAreaTop + 62);
-        }
+        // 許容した猫
+        ctx.font = "10px sans-serif";
+        ctx.fillStyle = "#9a8a7a";
+        ctx.fillText("許容した猫", LCX, ty);
+        ty -= 16;
+
+        // 猫すぎる
+        ctx.fillStyle = "#3a2e28";
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillText("猫すぎる", LCX, ty);
       }
 
       // 右3段
