@@ -354,19 +354,25 @@
         const catY = BODY_Y + 8;
         drawCatOnCanvas(ctx, myAvg, catX, catY, catSize);
 
-        // 文字を下から逆算して配置（カード下辺の内側に収まるように）
+        // 固定レイアウト：感謝メッセージ用スペースを常に確保
         const LCX = PAD + LEFT_W / 2;
-        const cardBottom = BODY_Y + BODY_H - 10; // カード下辺から10px内側
-        let ty = cardBottom;
+        const cardBottom = BODY_Y + BODY_H - 10;
+        // 4行分を常に固定配置（感謝なしでも空白確保）
+        const LINE1 = cardBottom - 54; // 猫すぎる
+        const LINE2 = cardBottom - 38; // 許容した猫
+        const LINE3 = cardBottom - 20; // xx匹 /xx
+        const LINE4 = cardBottom - 4;  // 感謝メッセージ（常にスペース確保）
 
-        // 感謝メッセージ（30以上）- 一番下
-        if (yesCount >= 30) {
-          ctx.font = "8px sans-serif";
-          ctx.fillStyle = "#e8734a";
-          ctx.textAlign = "center";
-          ctx.fillText("たくさんの猫を許容してくれてありがとう！", LCX, ty);
-          ty -= 16;
-        }
+        // 猫すぎる
+        ctx.fillStyle = "#3a2e28";
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("猫すぎる", LCX, LINE1);
+
+        // 許容した猫
+        ctx.font = "10px sans-serif";
+        ctx.fillStyle = "#9a8a7a";
+        ctx.fillText("許容した猫", LCX, LINE2);
 
         // xx匹 /xx
         ctx.font = "bold 22px sans-serif";
@@ -382,23 +388,18 @@
         ctx.font = "bold 22px sans-serif";
         ctx.fillStyle = "#3a2e28";
         ctx.textAlign = "left";
-        ctx.fillText(countText, blockX, ty);
+        ctx.fillText(countText, blockX, LINE3);
         ctx.font = "10px sans-serif";
         ctx.fillStyle = "#9a8a7a";
-        ctx.fillText(slashText, blockX + countW + gap, ty);
+        ctx.fillText(slashText, blockX + countW + gap, LINE3);
         ctx.textAlign = "center";
-        ty -= 16;
 
-        // 許容した猫
-        ctx.font = "10px sans-serif";
-        ctx.fillStyle = "#9a8a7a";
-        ctx.fillText("許容した猫", LCX, ty);
-        ty -= 16;
-
-        // 猫すぎる
-        ctx.fillStyle = "#3a2e28";
-        ctx.font = "bold 12px sans-serif";
-        ctx.fillText("猫すぎる", LCX, ty);
+        // 感謝メッセージ（30以上）
+        if (yesCount >= 30) {
+          ctx.font = "8px sans-serif";
+          ctx.fillStyle = "#e8734a";
+          ctx.fillText("たくさんの猫を許容してくれてありがとう！", LCX, LINE4);
+        }
       }
 
       // 右3段
