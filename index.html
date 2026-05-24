@@ -143,19 +143,20 @@
         ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=eyeStrokeW; ctx.lineCap="round"; ctx.stroke(); ctx.restore();
       });
       const noseSize=norm.nose_size*22*scale, noseY=cy+ry*0.15;
+      const noseBottom = noseY + noseSize * 0.6;
       if (noseSize>0.5) {
         ctx.beginPath();
-        ctx.moveTo(cx, noseY-noseSize*0.5);
-        ctx.quadraticCurveTo(cx+noseSize*0.5, noseY-noseSize*0.2, cx+noseSize, noseY+noseSize*0.5);
-        ctx.quadraticCurveTo(cx, noseY+noseSize*0.8, cx-noseSize, noseY+noseSize*0.5);
-        ctx.quadraticCurveTo(cx-noseSize*0.5, noseY-noseSize*0.2, cx, noseY-noseSize*0.5);
+        ctx.moveTo(cx-noseSize, noseY-noseSize*0.4);
+        ctx.quadraticCurveTo(cx, noseY-noseSize*0.6, cx+noseSize, noseY-noseSize*0.4);
+        ctx.quadraticCurveTo(cx+noseSize*0.5, noseY+noseSize*0.3, cx, noseBottom);
+        ctx.quadraticCurveTo(cx-noseSize*0.5, noseY+noseSize*0.3, cx-noseSize, noseY-noseSize*0.4);
         ctx.closePath();
         ctx.fillStyle="#e899a0"; ctx.fill();
         ctx.strokeStyle="#c06070"; ctx.lineWidth=0.8*scale; ctx.stroke();
       }
       const mouthSize=norm.mouth_size*(noseY-(cy-ry*0.22))*0.85;
       if (mouthSize>0.5) {
-        const my=noseY+noseSize*0.5;
+        const my = noseBottom;
         ctx.beginPath(); ctx.moveTo(cx,my); ctx.quadraticCurveTo(cx-mouthSize*0.6,my+mouthSize*0.7,cx-mouthSize,my+mouthSize*0.4);
         ctx.strokeStyle="#666"; ctx.lineWidth=1.4*scale; ctx.lineCap="round"; ctx.stroke();
         ctx.beginPath(); ctx.moveTo(cx,my); ctx.quadraticCurveTo(cx+mouthSize*0.6,my+mouthSize*0.7,cx+mouthSize,my+mouthSize*0.4);
@@ -248,16 +249,17 @@
             <line x1={cx-eyeX-eyeHalf.dx} y1={eyeY-eyeHalf.dy} x2={cx-eyeX+eyeHalf.dx} y2={eyeY+eyeHalf.dy} stroke="#1a1a1a" strokeWidth={eyeStrokeW} strokeLinecap="round"/>
           </g>
           {noseSize > 0.5 && (
-            <path d={`M ${cx} ${noseY-noseSize*0.5}
-              Q ${cx+noseSize*0.5} ${noseY-noseSize*0.2} ${cx+noseSize} ${noseY+noseSize*0.5}
-              Q ${cx} ${noseY+noseSize*0.8} ${cx-noseSize} ${noseY+noseSize*0.5}
-              Q ${cx-noseSize*0.5} ${noseY-noseSize*0.2} ${cx} ${noseY-noseSize*0.5} Z`}
+            <path d={`M ${cx-noseSize} ${noseY-noseSize*0.4}
+              Q ${cx} ${noseY-noseSize*0.6} ${cx+noseSize} ${noseY-noseSize*0.4}
+              Q ${cx+noseSize*0.5} ${noseY+noseSize*0.3} ${cx} ${noseY+noseSize*0.6}
+              Q ${cx-noseSize*0.5} ${noseY+noseSize*0.3} ${cx-noseSize} ${noseY-noseSize*0.4} Z`}
               fill="#e899a0" stroke="#c06070" strokeWidth={0.8*scale}/>
           )}
           {mouthSize > 0.5 && (<>
-            <path d={`M ${cx} ${noseY+noseSize*0.5} Q ${cx-mouthSize*0.6} ${noseY+noseSize*0.5+mouthSize*0.7} ${cx-mouthSize} ${noseY+noseSize*0.5+mouthSize*0.4}`} fill="none" stroke="#666" strokeWidth={1.4*scale} strokeLinecap="round"/>
-            <path d={`M ${cx} ${noseY+noseSize*0.5} Q ${cx+mouthSize*0.6} ${noseY+noseSize*0.5+mouthSize*0.7} ${cx+mouthSize} ${noseY+noseSize*0.5+mouthSize*0.4}`} fill="none" stroke="#666" strokeWidth={1.4*scale} strokeLinecap="round"/>
+            <path d={`M ${cx} ${noseY+noseSize*0.6} Q ${cx-mouthSize*0.6} ${noseY+noseSize*0.6+mouthSize*0.7} ${cx-mouthSize} ${noseY+noseSize*0.6+mouthSize*0.4}`} fill="none" stroke="#666" strokeWidth={1.4*scale} strokeLinecap="round"/>
+            <path d={`M ${cx} ${noseY+noseSize*0.6} Q ${cx+mouthSize*0.6} ${noseY+noseSize*0.6+mouthSize*0.7} ${cx+mouthSize} ${noseY+noseSize*0.6+mouthSize*0.4}`} fill="none" stroke="#666" strokeWidth={1.4*scale} strokeLinecap="round"/>
           </>)}
+
           {whiskers}
         </svg>
       );
