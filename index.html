@@ -131,25 +131,32 @@
       });
       ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.fillStyle="#fef8f0"; ctx.fill();
       ctx.strokeStyle="#d4b89a"; ctx.lineWidth=1.5*scale; ctx.stroke();
-      const eyeDot=1.5*scale, eyeLineLen=7*scale;
+      const eyeMinR=1.5*scale, eyeMaxLen=8*scale;
+      const eyeLen=eyeMinR+norm.eye_ratio*(eyeMaxLen-eyeMinR);
       const eyeY=cy-ry*0.22, eyeX=rx*0.44;
-      const eyeHalf = norm.eye_ratio<0.5 ? {dx:0,dy:eyeLineLen*(1-norm.eye_ratio*2)} : {dx:eyeLineLen*(norm.eye_ratio-0.5)*2,dy:0};
-      const eyeStrokeW=Math.max(eyeDot*2,3*scale);
-      const eyeRot=norm.eye_angle*Math.PI*2;
-      [-1,1].forEach(sign => {
-        const ecx=cx+sign*eyeX;
-        ctx.save(); ctx.translate(ecx,eyeY); ctx.rotate(sign*eyeRot);
-        ctx.beginPath(); ctx.moveTo(-eyeHalf.dx,-eyeHalf.dy); ctx.lineTo(eyeHalf.dx,eyeHalf.dy);
-        ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=eyeStrokeW; ctx.lineCap="round"; ctx.stroke(); ctx.restore();
-      });
+      const eyeAngleRad=(norm.eye_angle*175*Math.PI)/180;
+      const eyeHalf={dx:eyeLen*Math.cos(eyeAngleRad), dy:eyeLen*Math.sin(eyeAngleRad)};
+      const eyeStrokeW=Math.max(eyeMinR*2,3*scale);
+      // 右目
+      ctx.beginPath();
+      ctx.moveTo(cx+eyeX-eyeHalf.dx, eyeY-eyeHalf.dy);
+      ctx.lineTo(cx+eyeX+eyeHalf.dx, eyeY+eyeHalf.dy);
+      ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=eyeStrokeW; ctx.lineCap="round"; ctx.stroke();
+      // 左目（左右対称）
+      ctx.beginPath();
+      ctx.moveTo(cx-eyeX+eyeHalf.dx, eyeY-eyeHalf.dy);
+      ctx.lineTo(cx-eyeX-eyeHalf.dx, eyeY+eyeHalf.dy);
+      ctx.stroke();
       const noseSize=norm.nose_size*22*scale, noseY=cy+ry*0.15;
-      const noseBottom = noseY + noseSize * 0.6;
+      const nt=noseY-noseSize*0.3, nb=noseY+noseSize*0.6, noseBottom=nb;
+      const nr=cx+noseSize, nl=cx-noseSize, nr2=noseSize*0.35;
       if (noseSize>0.5) {
         ctx.beginPath();
-        ctx.moveTo(cx-noseSize, noseY-noseSize*0.4);
-        ctx.quadraticCurveTo(cx, noseY-noseSize*0.6, cx+noseSize, noseY-noseSize*0.4);
-        ctx.quadraticCurveTo(cx+noseSize*0.5, noseY+noseSize*0.3, cx, noseBottom);
-        ctx.quadraticCurveTo(cx-noseSize*0.5, noseY+noseSize*0.3, cx-noseSize, noseY-noseSize*0.4);
+        ctx.moveTo(cx, nt);
+        ctx.quadraticCurveTo(nr-nr2, nt, nr-nr2*0.3, nt+nr2*0.7);
+        ctx.quadraticCurveTo(nr, nb-nr2, cx, nb);
+        ctx.quadraticCurveTo(nl, nb-nr2, nl+nr2*0.3, nt+nr2*0.7);
+        ctx.quadraticCurveTo(nl+nr2, nt, cx, nt);
         ctx.closePath();
         ctx.fillStyle="#e899a0"; ctx.fill();
         ctx.strokeStyle="#c06070"; ctx.lineWidth=0.8*scale; ctx.stroke();
@@ -210,12 +217,16 @@
         if (earPointy < 0.5) return `M ${bx1} ${by1} Q ${tipX} ${tipY} ${bx2} ${by2} Z`;
         return `M ${bx1} ${by1} L ${tipX} ${tipY} L ${bx2} ${by2} Z`;
       }
-      const eyeDot = 1.5 * scale, eyeLineLen = 7 * scale;
+      // 目: 最小=点(・)、最大=横線(ー)
+      const eyeMinR = 1.5 * scale;
+      const eyeMaxLen = 8 * scale;
+      const eyeLen = eyeMinR + norm.eye_ratio * (eyeMaxLen - eyeMinR);
       const eyeY = cy - ry * 0.22, eyeX = rx * 0.44;
-      const eyeHalf = norm.eye_ratio < 0.5
-        ? { dx: 0, dy: eyeLineLen * (1 - norm.eye_ratio * 2) }
-        : { dx: eyeLineLen * (norm.eye_ratio - 0.5) * 2, dy: 0 };
-      const eyeStrokeW = Math.max(eyeDot * 2, 3 * scale);
+      // 0〜175°、左右対称（右目は+角度、左目は-角度）
+      const eyeAngleDeg = norm.eye_angle * 175;
+      const eyeAngleRad = (eyeAngleDeg * Math.PI) / 180;
+      const eyeHalf = { dx: eyeLen * Math.cos(eyeAngleRad), dy: eyeLen * Math.sin(eyeAngleRad) };
+      const eyeStrokeW = Math.max(eyeMinR * 2, 3 * scale);
       const noseSize = norm.nose_size * 22 * scale; // コアラサイズまで
       const noseY = cy + ry * 0.15;
       const mouthSize = norm.mouth_size * (noseY - eyeY) * 0.85;
@@ -242,19 +253,22 @@
           <path d={earPath(1)} fill="#f0deca" stroke="#d4b89a" strokeWidth={1.2*scale} strokeLinejoin="round"/>
           <path d={earPath(-1)} fill="#f0deca" stroke="#d4b89a" strokeWidth={1.2*scale} strokeLinejoin="round"/>
           <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="#fef8f0" stroke="#d4b89a" strokeWidth={1.5*scale}/>
-          <g transform={`rotate(${norm.eye_angle*360},${cx+eyeX},${eyeY})`}>
-            <line x1={cx+eyeX-eyeHalf.dx} y1={eyeY-eyeHalf.dy} x2={cx+eyeX+eyeHalf.dx} y2={eyeY+eyeHalf.dy} stroke="#1a1a1a" strokeWidth={eyeStrokeW} strokeLinecap="round"/>
-          </g>
-          <g transform={`rotate(${norm.eye_angle*360},${cx-eyeX},${eyeY})`}>
-            <line x1={cx-eyeX-eyeHalf.dx} y1={eyeY-eyeHalf.dy} x2={cx-eyeX+eyeHalf.dx} y2={eyeY+eyeHalf.dy} stroke="#1a1a1a" strokeWidth={eyeStrokeW} strokeLinecap="round"/>
-          </g>
-          {noseSize > 0.5 && (
-            <path d={`M ${cx-noseSize} ${noseY-noseSize*0.4}
-              Q ${cx} ${noseY-noseSize*0.6} ${cx+noseSize} ${noseY-noseSize*0.4}
-              Q ${cx+noseSize*0.5} ${noseY+noseSize*0.3} ${cx} ${noseY+noseSize*0.6}
-              Q ${cx-noseSize*0.5} ${noseY+noseSize*0.3} ${cx-noseSize} ${noseY-noseSize*0.4} Z`}
-              fill="#e899a0" stroke="#c06070" strokeWidth={0.8*scale}/>
-          )}
+          <line x1={cx+eyeX-eyeHalf.dx} y1={eyeY-eyeHalf.dy} x2={cx+eyeX+eyeHalf.dx} y2={eyeY+eyeHalf.dy} stroke="#1a1a1a" strokeWidth={eyeStrokeW} strokeLinecap="round"/>
+          <line x1={cx-eyeX+eyeHalf.dx} y1={eyeY-eyeHalf.dy} x2={cx-eyeX-eyeHalf.dx} y2={eyeY+eyeHalf.dy} stroke="#1a1a1a" strokeWidth={eyeStrokeW} strokeLinecap="round"/>
+          {noseSize > 0.5 && (() => {
+            const nl = cx - noseSize, nr = cx + noseSize;
+            const nt = noseY - noseSize * 0.3, nb = noseY + noseSize * 0.6;
+            const r = noseSize * 0.35;
+            return (
+              <path d={`
+                M ${cx} ${nt}
+                Q ${nr - r} ${nt} ${nr - r*0.3} ${nt + r*0.7}
+                Q ${nr} ${nb - r} ${cx} ${nb}
+                Q ${nl} ${nb - r} ${nl + r*0.3} ${nt + r*0.7}
+                Q ${nl + r} ${nt} ${cx} ${nt} Z`}
+                fill="#e899a0" stroke="#c06070" strokeWidth={0.8*scale}/>
+            );
+          })()}
           {mouthSize > 0.5 && (<>
             <path d={`M ${cx} ${noseY+noseSize*0.6} Q ${cx-mouthSize*0.6} ${noseY+noseSize*0.6+mouthSize*0.7} ${cx-mouthSize} ${noseY+noseSize*0.6+mouthSize*0.4}`} fill="none" stroke="#666" strokeWidth={1.4*scale} strokeLinecap="round"/>
             <path d={`M ${cx} ${noseY+noseSize*0.6} Q ${cx+mouthSize*0.6} ${noseY+noseSize*0.6+mouthSize*0.7} ${cx+mouthSize} ${noseY+noseSize*0.6+mouthSize*0.4}`} fill="none" stroke="#666" strokeWidth={1.4*scale} strokeLinecap="round"/>
@@ -484,8 +498,8 @@
             </div>
 
             {/* 次へ */}
-            <button onClick={handleNext}
-              style={{width:"100%",padding:"13px",borderRadius:14,background:phase==="voted"?"#3a2e28":"white",color:phase==="voted"?"#faf5ef":"#9a8a7a",border:`2px solid ${phase==="voted"?"#3a2e28":"#d4c5b5"}`,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>
+            <button onClick={handleNext} disabled={phase!=="voted"}
+              style={{width:"100%",padding:"13px",borderRadius:14,background:phase==="voted"?"#3a2e28":"white",color:phase==="voted"?"#faf5ef":"#ccc",border:`2px solid ${phase==="voted"?"#3a2e28":"#e0d8d0"}`,fontSize:15,fontWeight:700,cursor:phase==="voted"?"pointer":"not-allowed",fontFamily:"inherit",marginBottom:16}}>
               次のランダム猫を見る 🐱
             </button>
 
