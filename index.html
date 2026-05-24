@@ -331,7 +331,7 @@
       ctx.font = "bold 24px sans-serif";
       ctx.textAlign = "left";
       ctx.fillText("許容猫", 16, 28);
-      ctx.font = "20px sans-serif";
+      ctx.font = "16px sans-serif";
       ctx.fillStyle = "rgba(255,255,255,0.55)";
       ctx.fillText("判定レポート", 88, 28);
 
@@ -349,7 +349,7 @@
       ctx.beginPath(); ctx.roundRect(PAD, BODY_Y, LEFT_W, BODY_H, 12); ctx.fill();
 
       if (myAvg) {
-        const catSize = Math.floor((Math.min(LEFT_W, BODY_H) - 70) * 1.155);
+        const catSize = Math.floor((Math.min(LEFT_W, BODY_H) - 70) * 0.85);
         const catX = PAD + LEFT_W/2 - catSize/2;
         const catY = BODY_Y + 8;
         drawCatOnCanvas(ctx, myAvg, catX, catY, catSize);
@@ -375,7 +375,7 @@
         ctx.fillText("許容した猫", LCX, LINE2);
 
         // xx匹 /xx
-        ctx.font = "bold 20px sans-serif";
+        ctx.font = "bold 26px sans-serif";
         ctx.fillStyle = "#3a2e28";
         const countText = `${yesCount}匹`;
         const countW = ctx.measureText(countText).width;
@@ -415,7 +415,7 @@
         ctx.fillStyle = "white";
         ctx.beginPath(); ctx.roundRect(RIGHT_X, fy, RIGHT_W, ROW_H, 10); ctx.fill();
         if (norm) {
-          const s = Math.floor((ROW_H - LABEL_H - 4) * 1.155);
+          const s = Math.floor((ROW_H - LABEL_H - 4) * 0.85);
           // ラベルのすぐ上に猫を配置
           const labelY = fy + ROW_H - 4;
           const catY = labelY - s - 2;
