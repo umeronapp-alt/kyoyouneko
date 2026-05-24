@@ -110,7 +110,7 @@
       const earWidth = (10 + norm.ear_size * 20) * scale;
       const earLen = (16 + norm.ear_length * 80) * scale;
       const earPointy = norm.ear_pointy;
-      const earAngleDeg = 90 - norm.ear_position * 80;
+      const earAngleDeg = 90 - norm.ear_position * 75;
       const earAngleRad = (earAngleDeg * Math.PI) / 180;
       function getEarPoints(sign) {
         const ang = sign === 1 ? earAngleRad : Math.PI - earAngleRad;
@@ -195,7 +195,7 @@
       const earWidth = (10 + norm.ear_size * 20) * scale;  // 幅
       const earLen = (16 + norm.ear_length * 80) * scale;  // 長さ（ウサギ耳まで）
       const earPointy = norm.ear_pointy;
-      const earAngleDeg = 90 - norm.ear_position * 80;     // 10°〜90°
+      const earAngleDeg = 90 - norm.ear_position * 75;     // 15°〜90°
       const earAngleRad = (earAngleDeg * Math.PI) / 180;
       function earCenter(sign) {
         const ang = sign === 1 ? earAngleRad : Math.PI - earAngleRad;
@@ -343,36 +343,45 @@
       ctx.beginPath(); ctx.roundRect(PAD, BODY_Y, LEFT_W, BODY_H, 12); ctx.fill();
 
       if (myAvg) {
-        const catSize = Math.min(LEFT_W, BODY_H) - 60;
+        const catSize = Math.floor((Math.min(LEFT_W, BODY_H) - 70) * 1.05);
         const catX = PAD + LEFT_W/2 - catSize/2;
-        const catY = BODY_Y + 10;
+        const catY = BODY_Y + 8;
         drawCatOnCanvas(ctx, myAvg, catX, catY, catSize);
 
+        const infoY = BODY_Y + catSize + 20;
         // 猫すぎる ラベル
         ctx.fillStyle = "#3a2e28";
         ctx.font = "bold 13px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("猫すぎる", PAD + LEFT_W/2, BODY_Y + catSize + 24);
+        ctx.fillText("猫すぎる", PAD + LEFT_W/2, infoY);
 
-        // 許容した猫 xx匹 / xx(自分の総投票数)
+        // 許容した猫
         ctx.font = "11px sans-serif";
         ctx.fillStyle = "#7a6a5a";
-        ctx.fillText("許容した猫", PAD + LEFT_W/2, BODY_Y + catSize + 40);
-        ctx.font = "bold 15px sans-serif";
-        ctx.fillStyle = "#3a2e28";
-        ctx.fillText(`${yesCount}匹 / ${totalCount}票`, PAD + LEFT_W/2, BODY_Y + catSize + 58);
+        ctx.fillText("許容した猫", PAD + LEFT_W/2, infoY + 16);
 
-        // 感謝メッセージ（30以上）
+        // 匹数：大きく、/xx を小さく
+        ctx.font = "bold 20px sans-serif";
+        ctx.fillStyle = "#3a2e28";
+        const countText = `${yesCount}匹`;
+        const countW = ctx.measureText(countText).width;
+        ctx.font = "bold 20px sans-serif";
+        ctx.fillText(countText, PAD + LEFT_W/2 - 10, infoY + 36);
+        ctx.font = "11px sans-serif";
+        ctx.fillStyle = "#9a8a7a";
+        ctx.fillText(`/${totalCount}`, PAD + LEFT_W/2 + countW/2, infoY + 36);
+
+        // 感謝メッセージ（30以上）一行で
         if (yesCount >= 30) {
-          ctx.font = "10px sans-serif";
+          ctx.font = "9px sans-serif";
           ctx.fillStyle = "#e8734a";
-          ctx.fillText("たくさんの猫を", PAD + LEFT_W/2, BODY_Y + catSize + 74);
-          ctx.fillText("許容してくれてありがとう！", PAD + LEFT_W/2, BODY_Y + catSize + 88);
+          ctx.fillText("たくさんの猫を許容してくれてありがとう！", PAD + LEFT_W/2, infoY + 54);
         }
       }
 
       // 右3段
       const ROW_H = Math.floor(BODY_H / 3) - 3;
+      const LABEL_H = 16; // ラベルの高さ
       const rows = [
         { norm: giri1, label: "ギリギリ猫" },
         { norm: giri2, label: "たぶん猫のはず" },
@@ -383,13 +392,15 @@
         ctx.fillStyle = "white";
         ctx.beginPath(); ctx.roundRect(RIGHT_X, fy, RIGHT_W, ROW_H, 10); ctx.fill();
         if (norm) {
-          const s = ROW_H - 20;
-          drawCatOnCanvas(ctx, norm, RIGHT_X + RIGHT_W/2 - s/2, fy + 4, s);
+          const s = Math.floor((ROW_H - LABEL_H - 4) * 1.05); // 1.05倍、下げて配置
+          // 猫を下寄せ（ラベルに近く）
+          const catY = fy + ROW_H - LABEL_H - s - 2;
+          drawCatOnCanvas(ctx, norm, RIGHT_X + RIGHT_W/2 - s/2, catY, s);
         }
         ctx.fillStyle = "#3a2e28";
         ctx.font = "bold 9px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(label, RIGHT_X + RIGHT_W/2, fy + ROW_H - 5);
+        ctx.fillText(label, RIGHT_X + RIGHT_W/2, fy + ROW_H - 4);
       });
 
       // URL（右上）
