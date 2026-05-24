@@ -110,7 +110,7 @@
       const earWidth = (10 + norm.ear_size * 20) * scale;
       const earLen = (16 + norm.ear_length * 80) * scale;
       const earPointy = norm.ear_pointy;
-      const earAngleDeg = 90 - norm.ear_position * 90;
+      const earAngleDeg = 90 - norm.ear_position * 80;
       const earAngleRad = (earAngleDeg * Math.PI) / 180;
       function getEarPoints(sign) {
         const ang = sign === 1 ? earAngleRad : Math.PI - earAngleRad;
@@ -144,10 +144,14 @@
       });
       const noseSize=norm.nose_size*22*scale, noseY=cy+ry*0.15;
       if (noseSize>0.5) {
-        ctx.save(); ctx.translate(cx,noseY); ctx.rotate(norm.nose_angle*Math.PI*2);
-        ctx.beginPath(); ctx.moveTo(0,-noseSize*0.5); ctx.lineTo(-noseSize,noseSize*0.5); ctx.lineTo(noseSize,noseSize*0.5);
-        ctx.closePath(); ctx.fillStyle="#e899a0"; ctx.fill();
-        ctx.strokeStyle="#c06070"; ctx.lineWidth=0.8*scale; ctx.stroke(); ctx.restore();
+        ctx.beginPath();
+        ctx.moveTo(cx, noseY-noseSize*0.5);
+        ctx.quadraticCurveTo(cx+noseSize*0.5, noseY-noseSize*0.2, cx+noseSize, noseY+noseSize*0.5);
+        ctx.quadraticCurveTo(cx, noseY+noseSize*0.8, cx-noseSize, noseY+noseSize*0.5);
+        ctx.quadraticCurveTo(cx-noseSize*0.5, noseY-noseSize*0.2, cx, noseY-noseSize*0.5);
+        ctx.closePath();
+        ctx.fillStyle="#e899a0"; ctx.fill();
+        ctx.strokeStyle="#c06070"; ctx.lineWidth=0.8*scale; ctx.stroke();
       }
       const mouthSize=norm.mouth_size*(noseY-(cy-ry*0.22))*0.85;
       if (mouthSize>0.5) {
@@ -183,7 +187,7 @@
       const earWidth = (10 + norm.ear_size * 20) * scale;  // 幅
       const earLen = (16 + norm.ear_length * 80) * scale;  // 長さ（ウサギ耳まで）
       const earPointy = norm.ear_pointy;
-      const earAngleDeg = 90 - norm.ear_position * 90;     // 0°真横〜90°脳天
+      const earAngleDeg = 90 - norm.ear_position * 80;     // 10°〜90°
       const earAngleRad = (earAngleDeg * Math.PI) / 180;
       function earCenter(sign) {
         const ang = sign === 1 ? earAngleRad : Math.PI - earAngleRad;
@@ -244,9 +248,11 @@
             <line x1={cx-eyeX-eyeHalf.dx} y1={eyeY-eyeHalf.dy} x2={cx-eyeX+eyeHalf.dx} y2={eyeY+eyeHalf.dy} stroke="#1a1a1a" strokeWidth={eyeStrokeW} strokeLinecap="round"/>
           </g>
           {noseSize > 0.5 && (
-            <g transform={`rotate(${norm.nose_angle*360},${cx},${noseY})`}>
-              <polygon points={`${cx},${noseY-noseSize*0.5} ${cx-noseSize},${noseY+noseSize*0.5} ${cx+noseSize},${noseY+noseSize*0.5}`} fill="#e899a0" stroke="#c06070" strokeWidth={0.8*scale}/>
-            </g>
+            <path d={`M ${cx} ${noseY-noseSize*0.5}
+              Q ${cx+noseSize*0.5} ${noseY-noseSize*0.2} ${cx+noseSize} ${noseY+noseSize*0.5}
+              Q ${cx} ${noseY+noseSize*0.8} ${cx-noseSize} ${noseY+noseSize*0.5}
+              Q ${cx-noseSize*0.5} ${noseY-noseSize*0.2} ${cx} ${noseY-noseSize*0.5} Z`}
+              fill="#e899a0" stroke="#c06070" strokeWidth={0.8*scale}/>
           )}
           {mouthSize > 0.5 && (<>
             <path d={`M ${cx} ${noseY+noseSize*0.5} Q ${cx-mouthSize*0.6} ${noseY+noseSize*0.5+mouthSize*0.7} ${cx-mouthSize} ${noseY+noseSize*0.5+mouthSize*0.4}`} fill="none" stroke="#666" strokeWidth={1.4*scale} strokeLinecap="round"/>
@@ -332,13 +338,13 @@
         ctx.textAlign = "center";
         ctx.fillText("猫すぎる", PAD + LEFT_W/2, BODY_Y + catSize + 24);
 
-        // 許容した猫 xx匹 / xx
+        // 許容した猫 xx匹 / xx(自分の総投票数)
         ctx.font = "11px sans-serif";
         ctx.fillStyle = "#7a6a5a";
         ctx.fillText("許容した猫", PAD + LEFT_W/2, BODY_Y + catSize + 40);
         ctx.font = "bold 15px sans-serif";
         ctx.fillStyle = "#3a2e28";
-        ctx.fillText(`${yesCount}匹 / ${totalCount}`, PAD + LEFT_W/2, BODY_Y + catSize + 58);
+        ctx.fillText(`${yesCount}匹 / ${totalCount}票`, PAD + LEFT_W/2, BODY_Y + catSize + 58);
 
         // 感謝メッセージ（30以上）
         if (yesCount >= 30) {
@@ -370,9 +376,9 @@
         ctx.fillText(label, RIGHT_X + RIGHT_W/2, fy + ROW_H - 5);
       });
 
-      // URL
-      ctx.fillStyle = "#b0a090"; ctx.font = "9px sans-serif"; ctx.textAlign = "right";
-      ctx.fillText("kyoyouneko.vercel.app", W - 8, H - 4);
+      // URL（右上）
+      ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "9px sans-serif"; ctx.textAlign = "right";
+      ctx.fillText("kyoyouneko.vercel.app", W - 8, 30);
 
       return canvas.toDataURL("image/png");
     }
@@ -385,6 +391,7 @@
       const votesRef = useRef([]);
       const [votesSnapshot, setVotesSnapshot] = useState([]);
       const [myYesVotes, setMyYesVotes] = useState([]);
+      const [myVoteCount, setMyVoteCount] = useState(0);
       const [phase, setPhase] = useState("idle");
       const [lastAnswer, setLastAnswer] = useState(null);
       const [loading, setLoading] = useState(true);
@@ -414,6 +421,7 @@
         votesRef.current = [...votesRef.current, entry];
         setVotesSnapshot([...votesRef.current]);
         if (isYes) setMyYesVotes(prev => [...prev, normalize(params)]);
+        setMyVoteCount(prev => prev + 1);
         setLastAnswer(isYes);
         setPhase("voted");
         await saveVote(entry);
@@ -481,7 +489,7 @@
 
             {/* 結果画像＋シェア（自分のYESが1票以上） */}
             {myAvgNorm && (() => {
-              const dataUrl = generateResultDataURL(myAvgNorm, myFarNorm, giri1Norm, giri2Norm, myYesVotes.length, totalCount);
+              const dataUrl = generateResultDataURL(myAvgNorm, myFarNorm, giri1Norm, giri2Norm, myYesVotes.length, myVoteCount);
               return (
                 <div style={{marginBottom:14}}>
                   <div style={{background:"white",borderRadius:16,padding:12,boxShadow:"0 2px 12px rgba(58,46,40,0.1)",marginBottom:10}}>
