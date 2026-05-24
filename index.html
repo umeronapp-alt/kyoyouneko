@@ -277,10 +277,10 @@
     }
 
     // ============================================================
-    // 画像生成（4:3）新レイアウト
+    // 画像生成（4:3）
     // ============================================================
-    function generateResultDataURL(myAvg, myFar, giri1, giri2, yesCount) {
-      const W = 560, H = 420; // 4:3
+    function generateResultDataURL(myAvg, myFar, giri1, giri2, yesCount, totalCount) {
+      const W = 560, H = 420;
       const canvas = document.createElement("canvas");
       canvas.width = W; canvas.height = H;
       const ctx = canvas.getContext("2d");
@@ -288,98 +288,84 @@
       ctx.fillStyle = "#faf5ef";
       ctx.fillRect(0, 0, W, H);
 
-      // ヘッダー（1行）
+      // ヘッダー
       const HEADER_H = 44;
       ctx.fillStyle = "#3a2e28";
       ctx.fillRect(0, 0, W, HEADER_H);
       ctx.fillStyle = "#faf5ef";
       ctx.font = "bold 20px sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText("許容猫", 16, 28);
-      ctx.font = "12px sans-serif";
-      ctx.fillStyle = "rgba(255,255,255,0.6)";
-      ctx.fillText("判定レポート", 72, 28);
+      ctx.fillText("許容ネコ", 16, 28);
+      ctx.font = "13px sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.fillText("判定レポート", 110, 28);
 
-      const BODY_Y = HEADER_H + 8;
-      const BODY_H = H - BODY_Y - 20;
-      const LEFT_W = W / 2 - 4;
-      const RIGHT_W = W / 2 - 4;
-      const RIGHT_X = W / 2 + 4;
-      const SMALL_H = BODY_H / 2 - 4;
-      const SMALL_W = RIGHT_W / 2 - 4;
+      const PAD = 8;
+      const BODY_Y = HEADER_H + PAD;
+      const BODY_H = H - BODY_Y - PAD;
 
-      // 左半分：平均の猫（大きく）
+      // 左 3/5、右 2/5
+      const LEFT_W = Math.floor(W * 3 / 5) - PAD;
+      const RIGHT_X = Math.floor(W * 3 / 5) + PAD;
+      const RIGHT_W = W - RIGHT_X - PAD;
+
+      // 左カード（平均猫）
+      ctx.fillStyle = "white";
+      ctx.beginPath(); ctx.roundRect(PAD, BODY_Y, LEFT_W, BODY_H, 12); ctx.fill();
+
       if (myAvg) {
-        ctx.fillStyle = "white";
-        ctx.beginPath();
-        ctx.roundRect(8, BODY_Y, LEFT_W - 4, BODY_H, 12);
-        ctx.fill();
-        const bigSize = Math.min(LEFT_W - 4, BODY_H) - 30;
-        drawCatOnCanvas(ctx, myAvg, 8 + (LEFT_W-4)/2 - bigSize/2, BODY_Y + 8, bigSize);
+        const catSize = Math.min(LEFT_W, BODY_H) - 60;
+        const catX = PAD + LEFT_W/2 - catSize/2;
+        const catY = BODY_Y + 10;
+        drawCatOnCanvas(ctx, myAvg, catX, catY, catSize);
+
+        // 猫すぎる ラベル
         ctx.fillStyle = "#3a2e28";
-        ctx.font = "bold 12px sans-serif";
+        ctx.font = "bold 13px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("自分の平均", 8 + (LEFT_W-4)/2, BODY_Y + BODY_H - 14);
-      }
+        ctx.fillText("猫すぎる", PAD + LEFT_W/2, BODY_Y + catSize + 24);
 
-      // 右上左：ギリ猫①
-      if (giri1) {
-        const fx = RIGHT_X, fy = BODY_Y;
-        ctx.fillStyle = "white";
-        ctx.beginPath(); ctx.roundRect(fx, fy, SMALL_W, SMALL_H, 10); ctx.fill();
-        const s = Math.min(SMALL_W, SMALL_H) - 28;
-        drawCatOnCanvas(ctx, giri1, fx + SMALL_W/2 - s/2, fy + 4, s);
-        ctx.fillStyle = "#3a2e28"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("ギリ猫①", fx + SMALL_W/2, fy + SMALL_H - 6);
-      }
-
-      // 右上右：ギリ猫②
-      if (giri2) {
-        const fx = RIGHT_X + SMALL_W + 4, fy = BODY_Y;
-        ctx.fillStyle = "white";
-        ctx.beginPath(); ctx.roundRect(fx, fy, SMALL_W, SMALL_H, 10); ctx.fill();
-        const s = Math.min(SMALL_W, SMALL_H) - 28;
-        drawCatOnCanvas(ctx, giri2, fx + SMALL_W/2 - s/2, fy + 4, s);
-        ctx.fillStyle = "#3a2e28"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("ギリ猫②", fx + SMALL_W/2, fy + SMALL_H - 6);
-      }
-
-      // 右下左：平均から遠い猫
-      if (myFar) {
-        const fx = RIGHT_X, fy = BODY_Y + SMALL_H + 8;
-        ctx.fillStyle = "white";
-        ctx.beginPath(); ctx.roundRect(fx, fy, SMALL_W, SMALL_H, 10); ctx.fill();
-        const s = Math.min(SMALL_W, SMALL_H) - 28;
-        drawCatOnCanvas(ctx, myFar, fx + SMALL_W/2 - s/2, fy + 4, s);
-        ctx.fillStyle = "#3a2e28"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("平均から遠い", fx + SMALL_W/2, fy + SMALL_H - 6);
-      }
-
-      // 右下右：票数テキスト
-      {
-        const fx = RIGHT_X + SMALL_W + 4, fy = BODY_Y + SMALL_H + 8;
-        ctx.fillStyle = "white";
-        ctx.beginPath(); ctx.roundRect(fx, fy, SMALL_W, SMALL_H, 10); ctx.fill();
+        // 許容した猫 xx匹 / xx
+        ctx.font = "11px sans-serif";
+        ctx.fillStyle = "#7a6a5a";
+        ctx.fillText("許容した猫", PAD + LEFT_W/2, BODY_Y + catSize + 40);
+        ctx.font = "bold 15px sans-serif";
         ctx.fillStyle = "#3a2e28";
-        ctx.textAlign = "center";
-        ctx.font = "bold 28px sans-serif";
-        ctx.fillText(`${yesCount}票`, fx + SMALL_W/2, fy + SMALL_H/2 - 8);
-        if (yesCount > 10) {
+        ctx.fillText(`${yesCount}匹 / ${totalCount}`, PAD + LEFT_W/2, BODY_Y + catSize + 58);
+
+        // 感謝メッセージ（30以上）
+        if (yesCount >= 30) {
           ctx.font = "10px sans-serif";
-          ctx.fillStyle = "#7a6a5a";
-          ctx.fillText("たくさんの猫を", fx + SMALL_W/2, fy + SMALL_H/2 + 10);
-          ctx.fillText("許容してくれて", fx + SMALL_W/2, fy + SMALL_H/2 + 24);
-          ctx.fillText("ありがとう！", fx + SMALL_W/2, fy + SMALL_H/2 + 38);
-        } else {
-          ctx.font = "10px sans-serif";
-          ctx.fillStyle = "#b0a090";
-          ctx.fillText("許容した猫の数", fx + SMALL_W/2, fy + SMALL_H/2 + 14);
+          ctx.fillStyle = "#e8734a";
+          ctx.fillText("たくさんの猫を", PAD + LEFT_W/2, BODY_Y + catSize + 74);
+          ctx.fillText("許容してくれてありがとう！", PAD + LEFT_W/2, BODY_Y + catSize + 88);
         }
       }
 
+      // 右3段
+      const ROW_H = Math.floor(BODY_H / 3) - 3;
+      const rows = [
+        { norm: giri1, label: "ギリギリ猫" },
+        { norm: giri2, label: "たぶん猫のはず" },
+        { norm: myFar, label: "とても許容できない" },
+      ];
+      rows.forEach(({ norm, label }, i) => {
+        const fy = BODY_Y + i * (ROW_H + 4);
+        ctx.fillStyle = "white";
+        ctx.beginPath(); ctx.roundRect(RIGHT_X, fy, RIGHT_W, ROW_H, 10); ctx.fill();
+        if (norm) {
+          const s = ROW_H - 20;
+          drawCatOnCanvas(ctx, norm, RIGHT_X + RIGHT_W/2 - s/2, fy + 4, s);
+        }
+        ctx.fillStyle = "#3a2e28";
+        ctx.font = "bold 9px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(label, RIGHT_X + RIGHT_W/2, fy + ROW_H - 5);
+      });
+
       // URL
-      ctx.fillStyle = "#b0a090"; ctx.font = "10px sans-serif"; ctx.textAlign = "right";
-      ctx.fillText("kyoyouneko.vercel.app", W-10, H-6);
+      ctx.fillStyle = "#b0a090"; ctx.font = "9px sans-serif"; ctx.textAlign = "right";
+      ctx.fillText("kyoyouneko.vercel.app", W - 8, H - 4);
 
       return canvas.toDataURL("image/png");
     }
@@ -488,7 +474,7 @@
 
             {/* 結果画像＋シェア（自分のYESが1票以上） */}
             {myAvgNorm && (() => {
-              const dataUrl = generateResultDataURL(myAvgNorm, myFarNorm, giri1Norm, giri2Norm, myYesVotes.length);
+              const dataUrl = generateResultDataURL(myAvgNorm, myFarNorm, giri1Norm, giri2Norm, myYesVotes.length, totalCount);
               return (
                 <div style={{marginBottom:14}}>
                   <div style={{background:"white",borderRadius:16,padding:12,boxShadow:"0 2px 12px rgba(58,46,40,0.1)",marginBottom:10}}>
