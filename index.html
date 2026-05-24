@@ -1,4 +1,4 @@
-　<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
@@ -370,22 +370,32 @@
         ctx.fillStyle = "#9a8a7a";
         ctx.fillText("許容した猫", LCX, textAreaTop + 24);
 
-        // 匹数（大）+ /xx（小）を横並び、間隔を詰める
+        // 匹数（大）をセンター、/xx（小）をその右横に
         ctx.font = "bold 22px sans-serif";
         ctx.fillStyle = "#3a2e28";
         const countText = `${yesCount}匹`;
         const countW = ctx.measureText(countText).width;
-        const numX = LCX - (countW / 2);
-        ctx.fillText(countText, numX, textAreaTop + 46);
+        ctx.font = "10px sans-serif";
+        const slashText = `/${totalCount}`;
+        const slashW = ctx.measureText(slashText).width;
+        // xx匹をセンター、/xxを右隣（間隔は/xxのフォントサイズ基準=約4px）
+        const gap = 4;
+        const blockW = countW + gap + slashW;
+        const blockX = LCX - blockW / 2;
+        ctx.font = "bold 22px sans-serif";
+        ctx.fillStyle = "#3a2e28";
+        ctx.textAlign = "left";
+        ctx.fillText(countText, blockX, textAreaTop + 46);
         ctx.font = "10px sans-serif";
         ctx.fillStyle = "#9a8a7a";
-        ctx.fillText(`/${totalCount}`, numX + countW + 1, textAreaTop + 46);
+        ctx.fillText(slashText, blockX + countW + gap, textAreaTop + 46);
+        ctx.textAlign = "center";
 
-        // 感謝メッセージ（30以上）
+        // 感謝メッセージ（30以上）- 枠内下部に収める
         if (yesCount >= 30) {
-          ctx.font = "8.5px sans-serif";
+          ctx.font = "8px sans-serif";
           ctx.fillStyle = "#e8734a";
-          ctx.fillText("たくさんの猫を許容してくれてありがとう！", LCX, textAreaTop + 60);
+          ctx.fillText("たくさんの猫を許容してくれてありがとう！", LCX, textAreaTop + 62);
         }
       }
 
