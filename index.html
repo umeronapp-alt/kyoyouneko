@@ -57,12 +57,18 @@
 
     function randomParams() {
       const p = {};
-      PARAM_KEYS.forEach(k => { p[k] = Math.floor(Math.random() * 21); });
+      PARAM_KEYS.forEach(k => {
+        if (k === "eye_angle") {
+          p[k] = Math.floor(Math.random() * 72); // 0〜71 × 5° = 0〜355°
+        } else {
+          p[k] = Math.floor(Math.random() * 21);
+        }
+      });
       return p;
     }
     function normalize(params) {
       const n = {};
-      PARAM_KEYS.forEach(k => { n[k] = params[k] / 20; });
+      PARAM_KEYS.forEach(k => { n[k] = params[k] / (k === "eye_angle" ? 71 : 20); });
       return n;
     }
     function paramsKey(params) { return PARAM_KEYS.map(k => params[k]).join("-"); }
@@ -134,7 +140,7 @@
       const eyeMinR=1.5*scale, eyeMaxLen=8*scale;
       const eyeLen=eyeMinR+norm.eye_ratio*(eyeMaxLen-eyeMinR);
       const eyeY=cy-ry*0.22, eyeX=rx*0.44;
-      const eyeAngleRad=(norm.eye_angle*175*Math.PI)/180;
+      const eyeAngleRad=(norm.eye_angle*355*Math.PI)/180;
       const eyeHalf={dx:eyeLen*Math.cos(eyeAngleRad), dy:eyeLen*Math.sin(eyeAngleRad)};
       const eyeStrokeW=Math.max(eyeMinR*2,3*scale);
       // 右目
@@ -223,7 +229,7 @@
       const eyeLen = eyeMinR + norm.eye_ratio * (eyeMaxLen - eyeMinR);
       const eyeY = cy - ry * 0.22, eyeX = rx * 0.44;
       // 0〜175°、左右対称（右目は+角度、左目は-角度）
-      const eyeAngleDeg = norm.eye_angle * 175;
+      const eyeAngleDeg = norm.eye_angle * 355;
       const eyeAngleRad = (eyeAngleDeg * Math.PI) / 180;
       const eyeHalf = { dx: eyeLen * Math.cos(eyeAngleRad), dy: eyeLen * Math.sin(eyeAngleRad) };
       const eyeStrokeW = Math.max(eyeMinR * 2, 3 * scale);
@@ -324,7 +330,7 @@
       ctx.fillStyle = "#faf5ef";
       ctx.font = "bold 20px sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText("許容ネコ", 16, 28);
+      ctx.fillText("許容猫", 16, 28);
       ctx.font = "13px sans-serif";
       ctx.fillStyle = "rgba(255,255,255,0.55)";
       ctx.fillText("判定レポート", 110, 28);
@@ -343,7 +349,7 @@
       ctx.beginPath(); ctx.roundRect(PAD, BODY_Y, LEFT_W, BODY_H, 12); ctx.fill();
 
       if (myAvg) {
-        const catSize = Math.floor((Math.min(LEFT_W, BODY_H) - 70) * 1.05);
+        const catSize = Math.floor((Math.min(LEFT_W, BODY_H) - 70) * 1.155);
         const catX = PAD + LEFT_W/2 - catSize/2;
         const catY = BODY_Y + 8;
         drawCatOnCanvas(ctx, myAvg, catX, catY, catSize);
@@ -392,7 +398,7 @@
         ctx.fillStyle = "white";
         ctx.beginPath(); ctx.roundRect(RIGHT_X, fy, RIGHT_W, ROW_H, 10); ctx.fill();
         if (norm) {
-          const s = Math.floor((ROW_H - LABEL_H - 4) * 1.05); // 1.05倍、下げて配置
+          const s = Math.floor((ROW_H - LABEL_H - 4) * 1.155); // 1.155倍
           // 猫を下寄せ（ラベルに近く）
           const catY = fy + ROW_H - LABEL_H - s - 2;
           drawCatOnCanvas(ctx, norm, RIGHT_X + RIGHT_W/2 - s/2, catY, s);
@@ -484,7 +490,7 @@
           {/* ヘッダー */}
           <div style={{width:"100%",background:"#3a2e28",color:"#faf5ef",padding:"14px 24px",textAlign:"center",marginBottom:20,boxShadow:"0 2px 12px rgba(0,0,0,0.15)"}}>
             <div style={{fontSize:22,fontWeight:700,letterSpacing:"0.08em"}}>許容猫</div>
-            <div style={{fontSize:13,opacity:0.7,marginTop:2}}>どこまでが猫ですか？</div>
+            <div style={{fontSize:13,opacity:0.7,marginTop:2}}>これは猫ですか？</div>
             <div style={{fontSize:11,opacity:0.45,marginTop:2}}>累計 {totalCount} 票 ／ YES {yesCount} 票</div>
           </div>
 
